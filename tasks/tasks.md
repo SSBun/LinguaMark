@@ -2,7 +2,7 @@
 
 - [解析页面全部可见文本](tasks/analyze-all-visible-page-text.md) — In Progress (2026-08-29 10:38)
 
-- [按功能拆分并提交本地改动](tasks/commit-local-changes-by-feature.md) — In Progress (2026-08-29 10:37)
+- [按功能拆分并提交本地改动](tasks/commit-local-changes-by-feature.md) — Completed (2026-08-29 10:42)
 
 - [基准比较解析协议](tasks/benchmark-parsing-protocols.md) — Completed (2026-08-29 08:38)
 
