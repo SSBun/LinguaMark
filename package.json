@@ -1,0 +1,26 @@
+{
+  "name": "linguamark",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "tsc --noEmit",
+    "setup:chrome": "playwright-core install chromium",
+    "open:test-article": "npm run build && node scripts/open-test-article.mjs",
+    "test": "node --test tests/annotations.test.ts",
+    "test:chrome": "npm run build && node tests/chrome.mjs",
+    "verify": "npm run check && npm test && npm run test:chrome"
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "^0.84.3",
+    "@earendil-works/pi-ai": "^0.84.3"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.2.7",
+    "@types/node": "^22.19.19",
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.62.1",
+    "typescript": "5.9.3"
+  }
+}
