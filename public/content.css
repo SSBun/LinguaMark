@@ -1,0 +1,89 @@
+::highlight(linguamark-primary) {
+  color: var(--linguamark-primary-color, #8a5a00);
+}
+
+::highlight(linguamark-supporting) {
+  color: var(--linguamark-supporting-color, #344054);
+}
+
+::highlight(linguamark-detail) {
+  color: var(--linguamark-detail-color, #667085);
+}
+
+::highlight(linguamark-subject) {
+  color: var(--linguamark-subject-color, #075bc6);
+}
+
+::highlight(linguamark-verb) {
+  color: var(--linguamark-verb-color, #b42318);
+}
+
+::highlight(linguamark-object) {
+  color: var(--linguamark-object-color, #067647);
+}
+
+::highlight(linguamark-complement) {
+  color: var(--linguamark-complement-color, #7a3db8);
+}
+
+::highlight(linguamark-primary-underline),
+::highlight(linguamark-supporting-underline),
+::highlight(linguamark-detail-underline),
+::highlight(linguamark-subject-underline),
+::highlight(linguamark-verb-underline),
+::highlight(linguamark-object-underline),
+::highlight(linguamark-complement-underline) {
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-thickness: .12em;
+  text-underline-offset: .18em;
+  text-decoration-skip-ink: auto;
+}
+
+::highlight(linguamark-primary-underline) { text-decoration-color: var(--linguamark-primary-color, #8a5a00); }
+::highlight(linguamark-supporting-underline) { text-decoration-color: var(--linguamark-supporting-color, #344054); }
+::highlight(linguamark-detail-underline) { text-decoration-color: var(--linguamark-detail-color, #667085); }
+::highlight(linguamark-subject-underline) { text-decoration-color: var(--linguamark-subject-color, #075bc6); }
+::highlight(linguamark-verb-underline) { text-decoration-color: var(--linguamark-verb-color, #b42318); }
+::highlight(linguamark-object-underline) { text-decoration-color: var(--linguamark-object-color, #067647); }
+::highlight(linguamark-complement-underline) { text-decoration-color: var(--linguamark-complement-color, #7a3db8); }
+
+.linguamark-boundary {
+  display: inline;
+  user-select: none;
+}
+
+.linguamark-boundary::after {
+  content: "│";
+  margin: 0 .35em;
+  color: color-mix(in srgb, currentColor 32%, transparent);
+  font-weight: 400;
+}
+
+.linguamark-boundary[hidden] { display: none !important; }
+
+@property --linguamark-parsing-background {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgb(125 211 252 / 12%);
+}
+
+@keyframes linguamark-parsing-pulse {
+  0%, 100% { --linguamark-parsing-background: rgb(125 211 252 / 12%); }
+  50% { --linguamark-parsing-background: rgb(125 211 252 / 30%); }
+}
+
+:root:has(.linguamark-parsing) {
+  animation: linguamark-parsing-pulse 1.15s ease-in-out infinite;
+}
+
+::highlight(linguamark-parsing) {
+  background-color: var(--linguamark-parsing-background);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:has(.linguamark-parsing) {
+    --linguamark-parsing-background: rgb(125 211 252 / 22%);
+    animation: none;
+  }
+}
