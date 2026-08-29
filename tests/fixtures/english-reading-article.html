@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LinguaMark English Article Test</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --accent: #3157d5;
+        --paper: #fffdf8;
+        --surface: #ffffff;
+        --text: #202534;
+        --muted: #687083;
+        --line: #dfe3eb;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: #edf0f5;
+        color: var(--text);
+        font-family: Georgia, "Times New Roman", serif;
+      }
+
+      .page {
+        display: grid;
+        grid-template-columns: minmax(0, 720px) 240px;
+        gap: 32px;
+        width: min(1040px, calc(100% - 40px));
+        margin: 48px auto;
+        align-items: start;
+      }
+
+      article,
+      aside {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--surface);
+        box-shadow: 0 18px 50px rgb(34 47 73 / 10%);
+      }
+
+      article { padding: clamp(28px, 6vw, 68px); }
+      aside { position: sticky; top: 24px; padding: 20px; font-family: system-ui, sans-serif; }
+
+      .kicker {
+        margin: 0 0 12px;
+        color: var(--accent);
+        font: 750 12px/1.2 system-ui, sans-serif;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 620px;
+        margin: 0;
+        font-size: clamp(38px, 7vw, 66px);
+        font-weight: 650;
+        line-height: .98;
+        letter-spacing: -.035em;
+      }
+
+      .dek {
+        margin: 24px 0 0;
+        color: var(--muted);
+        font-size: 21px;
+        line-height: 1.5;
+      }
+
+      .meta {
+        margin: 28px 0 42px;
+        padding-bottom: 22px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font: 13px/1.4 system-ui, sans-serif;
+      }
+
+      h2 {
+        margin: 46px 0 14px;
+        font-size: 25px;
+        line-height: 1.2;
+      }
+
+      p {
+        margin: 0 0 22px;
+        font-size: 19px;
+        line-height: 1.78;
+      }
+
+      a { color: var(--accent); text-underline-offset: 3px; }
+      em { color: #7a3db8; }
+
+      blockquote {
+        margin: 34px 0;
+        border-left: 4px solid var(--accent);
+        padding: 4px 0 4px 22px;
+        color: #3a4356;
+        font-size: 22px;
+        line-height: 1.55;
+      }
+
+      aside h2 { margin: 0 0 12px; font-size: 16px; }
+      aside ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; line-height: 1.75; }
+      aside code { color: var(--accent); }
+
+      footer {
+        margin-top: 42px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font: 13px/1.5 system-ui, sans-serif;
+      }
+
+      @media (max-width: 860px) {
+        .page { grid-template-columns: 1fr; }
+        aside { position: static; order: -1; }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --accent: #9aacff;
+          --paper: #10131a;
+          --surface: #181c25;
+          --text: #eef1f7;
+          --muted: #a8b0c0;
+          --line: #353c4b;
+        }
+        body { background: var(--paper); }
+        blockquote { color: #d4d9e3; }
+        em { color: #d6b1ff; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <article>
+        <header>
+          <p class="kicker">LinguaMark · English test article</p>
+          <h1>How Careful Reading Changes the Mind</h1>
+          <p class="dek">A short article designed to test sentence boundaries, paragraph importance, and the five basic English sentence patterns.</p>
+          <p class="meta">By Maya Chen · 8-minute test read · Updated August 2026</p>
+        </header>
+
+        <section>
+          <h2>Attention is a trainable skill</h2>
+          <p>Modern readers move quickly through a crowded world. Notifications interrupt them, headlines compete for them, and endless feeds reward immediate reactions. Careful reading offers a different rhythm. It asks the mind to pause, connect ideas, and decide what truly matters.</p>
+
+          <p>A strong paragraph usually has a center. One sentence carries the main claim, while the others explain it, challenge it, or make it concrete. When readers can see that hierarchy, they stop treating every line as equally important. The structure becomes easier to remember.</p>
+
+          <blockquote>Reading is not merely the movement of the eyes; it is the deliberate organization of attention.</blockquote>
+        </section>
+
+        <section>
+          <h2>The five basic patterns</h2>
+          <p>Birds fly. The morning is calm. Students read difficult essays. A patient teacher gives them useful clues. Practice makes complex sentences familiar.</p>
+
+          <p>The five sentences above intentionally follow SV, SVC, SVO, SVOO, and SVOC. Their vocabulary is simple, but their structures form a useful map. Once learners recognize the map, longer sentences become less intimidating.</p>
+        </section>
+
+        <section>
+          <h2>Punctuation can mislead a simple splitter</h2>
+          <p>Dr. Maya Chen paid $3.50 for coffee. “Is careful reading really slower?” she asked. Her colleague paused; the room remained silent. Then he answered, “Only at first.”</p>
+
+          <p>Abbreviations and decimal numbers contain periods, but they do not necessarily end sentences. A semicolon can join two complete clauses inside one sentence. Quotation marks may surround a question while a reporting clause continues outside them. An intelligent boundary marker must understand these differences.</p>
+
+          <p>Sometimes a thought fades away... and sometimes the ellipsis truly ends it. Context decides. Punctuation provides evidence, not a complete answer.</p>
+        </section>
+
+        <section>
+          <h2>Meaning survives rich formatting</h2>
+          <p>A reader may follow an <a href="#notes">inline reference</a>, notice an <em>emphasized phrase</em>, or pause over a technical term. Helpful annotation should preserve those elements instead of replacing the paragraph with new HTML. The page should remain searchable, selectable, and interactive.</p>
+
+          <p>Meaning grows when attention becomes deliberate.</p>
+
+          <p>Although the first attempt may feel slow, readers gain speed when recurring structures become familiar, and the effort eventually becomes automatic.</p>
+        </section>
+
+        <section id="notes">
+          <h2>A practical conclusion</h2>
+          <p>The goal is not to decorate every word. Good highlighting reduces noise, reveals structure, and helps the reader choose where to focus. When the visual system respects the original article, it becomes a quiet guide rather than another distraction.</p>
+        </section>
+
+        <footer>This fixture is intentionally self-contained and uses no external scripts, fonts, images, or network resources.</footer>
+      </article>
+
+      <aside aria-label="Test coverage">
+        <h2>Test coverage</h2>
+        <ul>
+          <li>Multiple paragraph importance levels</li>
+          <li><code>SV</code>, <code>SVC</code>, <code>SVO</code>, <code>SVOO</code>, <code>SVOC</code></li>
+          <li>Abbreviation and decimal periods</li>
+          <li>Quoted question and reporting clause</li>
+          <li>Semicolon and ellipsis</li>
+          <li>Inline link and emphasis</li>
+          <li>Single-sentence paragraph</li>
+          <li>Complex sentence fallback</li>
+        </ul>
+      </aside>
+    </main>
+  </body>
+</html>
