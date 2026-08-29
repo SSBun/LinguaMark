@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LinguaMark 设置</title>
+    <link rel="stylesheet" href="ui.css">
+  </head>
+  <body class="options-page">
+    <main class="options-shell">
+      <section class="glass-panel settings-panel" aria-labelledby="settings-title">
+        <header class="panel-header options-header">
+          <div class="brand-row">
+            <span class="brand-mark" aria-hidden="true">LM</span>
+            <div>
+              <p class="eyebrow">LINGUAMARK</p>
+              <p class="microcopy">MODEL CONNECTION</p>
+            </div>
+            <span class="status-pill">PRIVATE</span>
+          </div>
+          <h1 id="settings-title">连接你的<br>语言模型。</h1>
+          <p class="description">凭据保留在本地，模型请求只从扩展 Background service worker 发出。</p>
+        </header>
+
+        <form id="settings-form" class="settings-form">
+          <label class="field full-width">
+            <span class="field-label">供应商 <small>PROVIDER</small></span>
+            <select id="provider" name="provider">
+              <option value="deepseek">DeepSeek</option>
+              <option value="glm">GLM（ZAI／智谱）</option>
+              <option value="custom">OpenAI 兼容接口</option>
+            </select>
+          </label>
+
+          <label class="field full-width">
+            <span class="field-label">API Base URL <small>ENDPOINT</small></span>
+            <input id="base-url" name="baseUrl" type="url" required spellcheck="false" autocomplete="url">
+          </label>
+
+          <label class="field">
+            <span class="field-label">Model ID <small>MODEL</small></span>
+            <input id="model-id" name="modelId" type="text" required spellcheck="false" autocomplete="off">
+          </label>
+
+          <label class="field">
+            <span class="field-label">API Key <small>SECRET</small></span>
+            <input id="api-key" name="apiKey" type="password" required autocomplete="new-password" spellcheck="false" aria-describedby="key-note">
+          </label>
+
+          <div class="form-actions full-width">
+            <button class="primary save-button" type="submit">保存设置 <span aria-hidden="true">↗</span></button>
+            <button id="test-provider" class="text-button" type="button">测试连接 <span aria-hidden="true">↗</span></button>
+            <p id="status" class="status" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+
+        <section class="control-section render-settings" aria-labelledby="render-title">
+          <div class="section-heading">
+            <h2 id="render-title">渲染效果</h2>
+            <span>RENDER</span>
+          </div>
+          <div class="toggle-list">
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>句界</strong>
+                <small>在完整句子之间显示 <span class="separator-sample">│</span></small>
+              </span>
+              <input id="render-boundaries" type="checkbox" role="switch" aria-label="显示句界">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>句子重要度</strong>
+                <small>显示主旨、支撑与细节颜色</small>
+              </span>
+              <input id="render-importance" type="checkbox" role="switch" aria-label="显示句子重要度">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>主谓宾与补语</strong>
+                <small>显示句法核心词颜色</small>
+              </span>
+              <input id="render-grammar" type="checkbox" role="switch" aria-label="显示主谓宾与补语">
+            </label>
+          </div>
+          <table class="render-table" aria-label="文本标记类型">
+            <thead>
+              <tr>
+                <th scope="col">类型</th>
+                <th scope="col">高亮</th>
+                <th scope="col">模式</th>
+                <th scope="col">颜色</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="render-type"><strong>主旨</strong><small>PRIMARY</small></td>
+                <td class="render-toggle-cell"><input id="render-primary-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮主旨"></td>
+                <td><select id="render-primary-mode" class="render-mode" aria-label="主旨高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
+                <td><div class="color-editor"><input id="render-primary-color" class="render-color" type="color" value="#8A5A00" aria-label="主旨颜色"><output id="render-primary-value" for="render-primary-color">#8A5A00</output></div></td>
+              </tr>
+              <tr>
+                <td class="render-type"><strong>支撑</strong><small>SUPPORTING</small></td>
+                <td class="render-toggle-cell"><input id="render-supporting-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮支撑"></td>
+                <td><select id="render-supporting-mode" class="render-mode" aria-label="支撑高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
+                <td><div class="color-editor"><input id="render-supporting-color" class="render-color" type="color" value="#344054" aria-label="支撑颜色"><output id="render-supporting-value" for="render-supporting-color">#344054</output></div></td>
+              </tr>
+              <tr>
+                <td class="render-type"><strong>细节</strong><small>DETAIL</small></td>
+                <td class="render-toggle-cell"><input id="render-detail-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮细节"></td>
+                <td><select id="render-detail-mode" class="render-mode" aria-label="细节高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
+                <td><div class="color-editor"><input id="render-detail-color" class="render-color" type="color" value="#667085" aria-label="细节颜色"><output id="render-detail-value" for="render-detail-color">#667085</output></div></td>
+              </tr>
+              <tr>
+                <td class="render-type"><strong>主语</strong><small>SUBJECT · S</small></td>
+                <td class="render-toggle-cell"><input id="render-subject-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮主语"></td>
+                <td><select id="render-subject-mode" class="render-mode" aria-label="主语高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
+                <td><div class="color-editor"><input id="render-subject-color" class="render-color" type="color" value="#075BC6" aria-label="主语颜色"><output id="render-subject-value" for="render-subject-color">#075BC6</output></div></td>
+              </tr>
+              <tr>
+                <td class="render-type"><strong>谓语</strong><small>VERB · V</small></td>
+                <td class="render-toggle-cell"><input id="render-verb-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮谓语"></td>
+                <td><select id="render-verb-mode" class="render-mode" aria-label="谓语高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
+                <td><div class="color-editor"><input id="render-verb-color" class="render-color" type="color" value="#B42318" aria-label="谓语颜色"><output id="render-verb-value" for="render-verb-color">#B42318</output></div></td>
+              </tr>
+              <tr>
+                <td class="render-type"><strong>宾语</strong><small>OBJECT · O</small></td>
+                <td class="render-toggle-cell"><input id="render-object-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮宾语"></td>
+                <td><select id="render-object-mode" class="render-mode" aria-label="宾语高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
+                <td><div class="color-editor"><input id="render-object-color" class="render-color" type="color" value="#067647" aria-label="宾语颜色"><output id="render-object-value" for="render-object-color">#067647</output></div></td>
+              </tr>
+              <tr>
+                <td class="render-type"><strong>补语</strong><small>COMPLEMENT · C</small></td>
+                <td class="render-toggle-cell"><input id="render-complement-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮补语"></td>
+                <td><select id="render-complement-mode" class="render-mode" aria-label="补语高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
+                <td><div class="color-editor"><input id="render-complement-color" class="render-color" type="color" value="#7A3DB8" aria-label="补语颜色"><output id="render-complement-value" for="render-complement-color">#7A3DB8</output></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <aside id="key-note" class="security-note">
+          <span class="security-icon" aria-hidden="true">◇</span>
+          <div>
+            <strong>密钥只停留在此设备</strong>
+            <p>API Key 保存在 <code>chrome.storage.local</code>，不会进入网页 DOM；本地存储并不是加密保险库。</p>
+          </div>
+        </aside>
+      </section>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

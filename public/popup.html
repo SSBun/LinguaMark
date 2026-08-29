@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LinguaMark</title>
+    <link rel="stylesheet" href="ui.css">
+  </head>
+  <body class="popup-page">
+    <main class="popup-shell">
+      <section class="glass-panel popup-panel" aria-labelledby="popup-title">
+        <header class="panel-header">
+          <div class="brand-row">
+            <span class="brand-mark" aria-hidden="true">LM</span>
+            <div>
+              <p class="eyebrow">LINGUAMARK</p>
+              <p class="microcopy">READ WITH INTENT</p>
+            </div>
+            <span class="status-pill">EN · V1</span>
+          </div>
+          <h1 id="popup-title">让文章的结构<br>浮出水面。</h1>
+          <p class="description">弱化噪音，突出关键句，并标记英语句法骨架。</p>
+        </header>
+
+        <button id="analyze" class="primary action-button" type="button">
+          <span>分析可见内容</span>
+          <span class="button-arrow" aria-hidden="true">↗</span>
+        </button>
+        <p id="status" class="status" role="status" aria-live="polite">准备就绪</p>
+
+        <section class="control-section" aria-labelledby="display-title">
+          <div class="section-heading">
+            <h2 id="display-title">显示标记</h2>
+            <span>LAYERS</span>
+          </div>
+          <div class="toggle-list">
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>句界</strong>
+                <small>在完整句子之间显示 <span class="separator-sample">│</span></small>
+              </span>
+              <input id="boundaries" type="checkbox" role="switch" aria-label="显示句界">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>句子重要度</strong>
+                <small>突出主旨，弱化细节</small>
+              </span>
+              <input id="importance" type="checkbox" role="switch" aria-label="显示句子重要度">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>主谓宾与补语</strong>
+                <small>显示英语句法核心词</small>
+              </span>
+              <input id="grammar" type="checkbox" role="switch" aria-label="显示主谓宾与补语">
+            </label>
+          </div>
+        </section>
+
+        <div class="legend" aria-label="句法颜色图例">
+          <span class="subject"><b>S</b> 主语</span>
+          <span class="verb"><b>V</b> 谓语</span>
+          <span class="object"><b>O</b> 宾语</span>
+          <span class="complement"><b>C</b> 补语</span>
+        </div>
+
+        <footer class="panel-footer">
+          <button id="options" class="text-button" type="button">模型设置 <span aria-hidden="true">→</span></button>
+          <span class="privacy-note">LOCAL KEY</span>
+        </footer>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
