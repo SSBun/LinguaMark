@@ -1,6 +1,6 @@
 # 任务索引
 
-- [提交本地改动并发布 GitHub Release 0.1.0](tasks/publish-github-release-0-1-0.md) — In Progress (2026-09-01 17:12)
+- [提交本地改动并发布 GitHub Release 0.1.0](tasks/publish-github-release-0-1-0.md) — Completed (2026-09-01 17:23)
 
 - [放大 Markdown 收藏列表页面](tasks/enlarge-markdown-collection-list.md) — Completed (2026-09-01 16:42)
 

@@ -2,13 +2,15 @@
 
 - [x] 审查全部待提交文件、版本元数据与敏感信息。
 - [x] 运行类型检查和构建，生成并核验 0.1.0 扩展压缩包。
-- [ ] 提交全部本地改动。
-- [ ] 创建公开仓库 `ssbun/LinguaMark` 并推送提交。
-- [ ] 发布并核验 GitHub Release 0.1.0。
+- [x] 提交全部本地改动。
+- [x] 创建公开仓库 `ssbun/LinguaMark` 并推送提交。
+- [x] 发布并核验 GitHub Release 0.1.0。
 
 ## Review
 
-- 待完成。
+- 变更：提交全部既有本地改动，创建公开仓库 `SSBun/LinguaMark`，并发布带可安装扩展压缩包的 `v0.1.0` GitHub Release。
+- 验证：`npm run check`、`npm run build`、`git diff --check`、ZIP 完整性与必需文件检查、远程 main/tag 提交一致性及下载资产 SHA-256 校验均通过。
+- 未解决风险：按项目规则未运行测试套件；本次发布不包含 Chrome Web Store 发布。
 
 ---
 
