@@ -2,23 +2,55 @@
   "manifest_version": 3,
   "name": "LinguaMark",
   "version": "0.1.0",
-  "description": "突出英文文章的关键句与核心句法角色。",
+  "description": "逐句翻译并突出英文文章的关键句与核心句法角色。",
   "minimum_chrome_version": "120",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "permissions": ["storage", "tabs"],
-  "host_permissions": ["http://*/*", "https://*/*"],
+  "host_permissions": ["http://*/*", "https://*/*", "file:///*"],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "24": "icons/icon-24.png",
+      "32": "icons/icon-32.png"
+    },
     "default_popup": "popup.html",
     "default_title": "LinguaMark"
   },
+  "commands": {
+    "show-hovered-translation": {
+      "suggested_key": {
+        "default": "Alt+Shift+T",
+        "mac": "Option+Shift+T"
+      },
+      "description": "显示鼠标所在句子的翻译"
+    }
+  },
   "options_page": "options.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["katex.min.css", "fonts/*"],
+      "matches": ["file:///*"]
+    }
+  ],
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
       "js": ["content.js"],
       "css": ["content.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["file:///*.md", "file:///*.MD", "file:///*.Md", "file:///*.mD"],
+      "js": ["markdown.js", "content.js"],
+      "css": ["markdown.css", "content.css"],
       "run_at": "document_idle"
     }
   ]

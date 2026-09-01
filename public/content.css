@@ -62,6 +62,27 @@
 
 .linguamark-boundary[hidden] { display: none !important; }
 
+.linguamark-translation {
+  all: initial;
+  position: fixed;
+  z-index: 2147483647;
+  display: block;
+  box-sizing: border-box;
+  max-width: min(30rem, calc(100vw - 24px));
+  padding: 9px 12px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 10px;
+  background: rgb(28 28 30 / 94%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
+  color: #fff;
+  font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  user-select: none;
+}
+
+.linguamark-translation[hidden] { display: none !important; }
+
 @property --linguamark-parsing-background {
   syntax: "<color>";
   inherits: true;
@@ -81,9 +102,317 @@
   background-color: var(--linguamark-parsing-background);
 }
 
+.linguamark-learning-root {
+  all: initial;
+  position: fixed;
+  z-index: 2147483647;
+  display: block;
+  width: 44px;
+  height: 44px;
+  color-scheme: dark;
+  font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: left;
+  direction: ltr;
+}
+
+.linguamark-learning-root *,
+.linguamark-learning-root *::before,
+.linguamark-learning-root *::after {
+  box-sizing: border-box;
+}
+
+.linguamark-learning-trigger,
+.linguamark-learning-dismiss,
+.linguamark-learning-analyze,
+.linguamark-learning-panel-close,
+.linguamark-learning-favorite {
+  all: unset;
+  box-sizing: border-box;
+}
+
+.linguamark-learning-trigger {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 50%);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f3cf88, #d39a3d);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 22%), inset 0 1px 0 rgb(255 255 255 / 55%);
+  color: #3b2505;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: box-shadow 160ms ease, transform 160ms ease;
+}
+
+.linguamark-learning-trigger:hover {
+  box-shadow: 0 10px 26px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 62%);
+  transform: translateY(-1px);
+}
+
+.linguamark-learning-trigger:active,
+.linguamark-learning-root.is-dragging .linguamark-learning-trigger {
+  cursor: grabbing;
+  transform: scale(.97);
+}
+
+.linguamark-learning-trigger:disabled { cursor: wait; }
+
+.linguamark-learning-trigger:focus-visible,
+.linguamark-learning-dismiss:focus-visible,
+.linguamark-learning-analyze:focus-visible,
+.linguamark-learning-panel-close:focus-visible,
+.linguamark-learning-favorite:focus-visible {
+  outline: 3px solid rgb(245 200 112 / 55%);
+  outline-offset: 2px;
+}
+
+.linguamark-learning-dismiss {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  background: rgb(28 28 30 / 96%);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 24%);
+  color: rgb(255 255 255 / 88%);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.linguamark-learning-root:hover .linguamark-learning-dismiss,
+.linguamark-learning-root:focus-within .linguamark-learning-dismiss {
+  opacity: 1;
+}
+
+.linguamark-learning-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: flex;
+  min-width: 132px;
+  padding: 5px;
+  flex-direction: column;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 12px;
+  background: rgb(28 28 30 / 94%);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 30%);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px) scale(.98);
+  transform-origin: bottom right;
+  pointer-events: none;
+  backdrop-filter: blur(20px) saturate(1.3);
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+}
+
+.linguamark-learning-menu.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.linguamark-learning-analyze {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: rgb(255 255 255 / 88%);
+  font: 600 12px/16px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.linguamark-learning-analyze:hover { background: rgb(255 255 255 / 9%); }
+
+.linguamark-learning-panel {
+  position: fixed;
+  display: flex;
+  width: min(300px, calc(100vw - 20px));
+  max-height: min(420px, calc(100vh - 20px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 18px;
+  background: rgb(28 28 30 / 94%);
+  box-shadow: 0 22px 60px rgb(0 0 0 / 34%);
+  color: #fff;
+  backdrop-filter: blur(24px) saturate(1.35);
+}
+
+.linguamark-learning-panel[hidden] { display: none !important; }
+
+.linguamark-learning-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 16px 11px;
+  border-bottom: 1px solid rgb(255 255 255 / 9%);
+}
+
+.linguamark-learning-header > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.linguamark-learning-header h2 {
+  margin: 0;
+  color: #fff;
+  font: 700 16px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.linguamark-learning-count {
+  color: rgb(255 255 255 / 48%);
+  font-size: 12px;
+}
+
+.linguamark-learning-panel-close {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 8px;
+  color: rgb(255 255 255 / 62%);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.linguamark-learning-panel-close:hover { background: rgb(255 255 255 / 9%); }
+
+.linguamark-learning-status {
+  margin: 0;
+  padding: 10px 16px;
+  color: rgb(255 255 255 / 58%);
+  font-size: 12px;
+}
+
+.linguamark-learning-status.is-error { color: #ff9f96; }
+
+.linguamark-learning-list {
+  display: flex;
+  min-height: 0;
+  margin: 0;
+  padding: 0 10px 12px;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.linguamark-learning-item {
+  display: block;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 13px;
+  background: rgb(255 255 255 / 6%);
+}
+
+.linguamark-learning-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.linguamark-learning-kind {
+  display: inline-flex;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgb(142 142 147 / 18%);
+  color: #d1d1d6;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.linguamark-learning-kind.is-vocabulary { color: #8ed1ff; }
+.linguamark-learning-kind.is-phrase { color: #a9e8b4; }
+.linguamark-learning-kind.is-pattern { color: #e5c2ff; }
+
+.linguamark-learning-text,
+.linguamark-learning-note {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.linguamark-learning-text {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.linguamark-learning-note {
+  margin-top: 4px;
+  color: rgb(255 255 255 / 58%);
+  font-size: 12px;
+}
+
+.linguamark-learning-favorite {
+  flex: none;
+  padding: 5px 8px;
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 8px;
+  color: rgb(255 255 255 / 68%);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.linguamark-learning-favorite:hover { background: rgb(255 255 255 / 8%); }
+
+.linguamark-learning-favorite.is-saved {
+  border-color: rgb(228 184 99 / 32%);
+  background: rgb(228 184 99 / 14%);
+  color: #f3cf88;
+}
+
+.linguamark-learning-empty {
+  margin: 0 16px 18px;
+  padding: 18px 14px;
+  border: 1px dashed rgb(255 255 255 / 12%);
+  border-radius: 12px;
+  color: rgb(255 255 255 / 45%);
+  text-align: center;
+}
+
+.linguamark-learning-empty[hidden] { display: none !important; }
+
+@keyframes linguamark-learning-busy {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.2); }
+}
+
+.linguamark-learning-trigger[aria-busy="true"] {
+  animation: linguamark-learning-busy 900ms ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root:has(.linguamark-parsing) {
     --linguamark-parsing-background: rgb(125 211 252 / 22%);
     animation: none;
   }
+
+  .linguamark-learning-trigger,
+  .linguamark-learning-dismiss,
+  .linguamark-learning-menu {
+    transition: none;
+  }
+
+  .linguamark-learning-trigger[aria-busy="true"] { animation: none; }
 }

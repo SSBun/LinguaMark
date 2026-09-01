@@ -1,6 +1,6 @@
 # 在设置页添加渲染效果面板
 
-Status: Completed (2026-08-29 10:34)
+Status: Completed (2026-08-29 12:15)
 Kind: Task
 
 ## Target
@@ -11,13 +11,15 @@ Kind: Task
 - [x] T5: 七种文本标记可逐项选择“文字变色”或“彩色下划线”高亮模式。
 - [x] T6: 旧设置和新设置默认使用文字变色；模式选择会持久化并实时应用，下划线模式使用该项配置颜色且不改变原文字色。
 - [x] T7: 修复用户切换到彩色下划线后文章渲染效果不变化的问题，并在当前开发 Chrome 中验证切换立即可见。
+- [x] T8: 设置页在渲染配置面板上方显示最终渲染效果预览，并随当前配置更新。
+- [x] T9: 颜色字段可选择内置颜色。
+- [x] T10: 每个颜色文本字段前显示反映当前颜色值的色块。
 
 ## Plan
 
-1. 为每种文本标记增加可持久化的高亮模式，并兼容没有模式字段的旧设置。
-2. 在渲染列表中增加逐行模式选择，保持现有启用开关和颜色编辑。
-3. 让 Content script 按模式生成文字颜色或彩色下划线，并实时响应设置变化。
-4. 补充两个模式的可运行检查并完成类型检查、构建与静态验证。
+1. 在渲染配置上方加入覆盖重要度、句法角色和句界的结果预览。
+2. 让颜色控件可靠选择八种内置颜色，并用前置色块同步显示当前有效 Hex。
+3. 验证预览联动、颜色持久化、类型检查与构建产物。
 
 ## Result
 
@@ -28,8 +30,11 @@ Kind: Task
 - T5: Options 渲染表格七行均新增 text/underline 模式选择；DisplaySettings 为每个类型持久化 mode，Content 在原逻辑 Highlight 与 -underline Highlight 间逐项切换。
 - T6: readDisplaySettings 将旧设置和非法模式回退为 text；浏览器 smoke 将 subject 切换为 underline 后仅注册 linguamark-subject-underline，原文 color 保持 rgb(20,30,40)，下划线为 underline 且颜色 rgb(255,0,255)。
 - T7: 根因为开发 Chrome 于 09:05 启动，而下划线 dist 于 10:10 构建；旧 Content script 不识别 mode，故设置保存但文章效果不变。已关闭旧会话、重载扩展并以最新 dist 重启；独立 Chrome smoke 证明 subject 在 text/underline 名称间互斥切换且下划线颜色生效。
+- T8: 独立 Chrome 设置页 smoke 观察到 20 个预览标记；颜色、文字／下划线模式与句界变更立即改变预览计算样式。
+- T9: 七个颜色控件各提供八种固定预设与自定义项；Chrome smoke 选择红色后文本值、预览和文章 CSS 色值均变为 #FF383C。
+- T10: Chrome smoke 确认七个前置色块均显示当前色值；输入自定义 #ABCDEF 后对应色块实时变为 rgb(171, 205, 239)。
 - Review gate: Skipped — 用户未要求独立 Reviewer 审查。
 
 ## Verification
 
-- Passed: 时间戳证实旧运行时早于新构建；npm run check/build、静态检查和浏览器实时模式 smoke 通过。最新开发 Chrome 已以 status=ready 启动于 http://127.0.0.1:52708/english-reading-article.html。按用户规则未运行项目测试套件。
+- Passed: npm run check、npm run build、node --check tests/chrome.mjs、git diff --check、Context validate 与独立 Chrome 设置页 smoke 均通过；按用户规则未运行项目测试套件。

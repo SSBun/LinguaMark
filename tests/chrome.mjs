@@ -16,19 +16,19 @@ const ANNOTATIONS = {
     {
       id: "paragraph-0",
       sentences: [
-        { quote: "Birds fly.", importance: "detail", pattern: "SV", roles: [
+        { quote: "Birds fly.", translation: "鸟会飞。", importance: "detail", pattern: "SV", roles: [
           { role: "subject", quote: "Birds" }, { role: "verb", quote: "fly" },
         ] },
-        { quote: "She is happy.", importance: "supporting", pattern: "SVC", roles: [
+        { quote: "She is happy.", translation: "她很开心。", importance: "supporting", pattern: "SVC", roles: [
           { role: "subject", quote: "She" }, { role: "verb", quote: "is" }, { role: "subjectComplement", quote: "happy" },
         ] },
-        { quote: "I read books.", importance: "primary", pattern: "SVO", roles: [
+        { quote: "I read books.", translation: "我读书。", importance: "primary", pattern: "SVO", roles: [
           { role: "subject", quote: "I" }, { role: "verb", quote: "read" }, { role: "object", quote: "books" },
         ] },
-        { quote: "He gave me a gift.", importance: "supporting", pattern: "SVOO", roles: [
+        { quote: "He gave me a gift.", translation: "他给了我一份礼物。", importance: "supporting", pattern: "SVOO", roles: [
           { role: "subject", quote: "He" }, { role: "verb", quote: "gave" }, { role: "indirectObject", quote: "me" }, { role: "directObject", quote: "gift" },
         ] },
-        { quote: "They made him captain.", importance: "detail", pattern: "SVOC", roles: [
+        { quote: "They made him captain.", translation: "他们让他担任队长。", importance: "detail", pattern: "SVOC", roles: [
           { role: "subject", quote: "They" }, { role: "verb", quote: "made" }, { role: "object", quote: "him" }, { role: "objectComplement", quote: "captain" },
         ] },
       ],
@@ -36,10 +36,13 @@ const ANNOTATIONS = {
     {
       id: "paragraph-1",
       sentences: [
-        { quote: "Dr. Smith paid $3.50.", importance: "primary", pattern: "SVO", roles: [
+        { quote: "Dr. Smith paid $3.50.", translation: "史密斯博士支付了 3.50 美元。", importance: "primary", pattern: "SVO", roles: [
           { role: "subject", quote: "Dr. Smith" }, { role: "verb", quote: "paid" }, { role: "object", quote: "$3.50" },
         ] },
-        { quote: "He left; his assistant stayed.", importance: "supporting", pattern: "unclassified", roles: [] },
+        { quote: "He left; his assistant stayed.", translation: "他离开了；他的助理留下了。", importance: "supporting", pattern: "multi", roles: [
+          { role: "subject", quote: "He" }, { role: "verb", quote: "left" },
+          { role: "subject", quote: "his assistant" }, { role: "verb", quote: "stayed" },
+        ] },
       ],
     },
   ],
@@ -53,6 +56,9 @@ for (const type of ["primary", "supporting", "detail", "subject", "verb", "objec
   assert.match(contentCss, new RegExp(`::highlight\\(linguamark-${type}-underline\\)`, "u"));
 }
 assert.match(contentCss, /text-decoration-line:\s*underline/u);
+const manifest = JSON.parse(await readFile(resolve("dist/manifest.json"), "utf8"));
+assert.equal(manifest.commands["show-hovered-translation"].suggested_key.default, "Alt+Shift+T");
+assert.equal(manifest.commands["show-hovered-translation"].suggested_key.mac, "Option+Shift+T");
 
 const requests = [];
 const responseGates = new Map();
@@ -71,6 +77,7 @@ const server = createServer(async (request, response) => {
 <body><article>
 <p id="patterns">Birds fly. She is happy. I read <a id="reference" href="#reference">books</a>. He gave me a gift. They made him captain.</p>
 <p id="edge">Dr. Smith paid $3.50. He left; his assistant stayed.</p>
+<pre id="code-block"><code><span>let CODE_BLOCK_SENTINEL = 42</span></code></pre>
 <div style="height:1200px"></div>
 <p id="offscreen">This paragraph stays below the viewport and must never be sent to the model.</p>
 </article><script>window.linkClicks=0;document.querySelector('#reference').addEventListener('click',event=>{event.preventDefault();window.linkClicks+=1})</script></body></html>`);
@@ -171,10 +178,27 @@ try {
       buttonBackground: button.backgroundImage,
       inputHeight: Number.parseFloat(input.height),
       statusSuccess: document.querySelector("#status")?.classList.contains("success"),
+      hasAnalysisPanel: Boolean(document.querySelector("#analysis-title")),
+      analysisConcurrency: document.querySelector("#analysis-concurrency")?.valueAsNumber,
+      hasParserControlsPanel: Boolean(document.querySelector("#parser-controls-title")),
+      mainContentOnlyChecked: document.querySelector("#analysis-main-content-only")?.checked,
       hasRenderPanel: Boolean(document.querySelector("#render-title")),
+      hasTranslationPanel: Boolean(document.querySelector("#translation-title")),
+      translationControlsInOwnPanel: document.querySelector(".translation-settings #render-translation") !== null
+        && document.querySelector(".translation-settings #render-translation-hover") !== null,
+      renderHasTranslationControls: document.querySelector(".render-settings #render-translation, .render-settings #render-translation-hover") !== null,
       highlightRowCount: document.querySelectorAll(".render-table tbody tr").length,
       allHighlightsEnabled: [...document.querySelectorAll(".render-enabled")].every((input) => input.checked),
       allModesText: [...document.querySelectorAll(".render-mode")].every((select) => select.value === "text"),
+      previewMarkCount: document.querySelectorAll("[data-preview-importance]").length,
+      previewSubjectColor: getComputedStyle(document.querySelector("[data-preview-role='subject']")).color,
+      previewBoundariesHidden: [...document.querySelectorAll(".render-preview-boundary")].every((item) => item.hidden),
+      fullPhrasesChecked: document.querySelector("#render-full-phrases")?.checked,
+      translationChecked: document.querySelector("#render-translation")?.checked,
+      translationHoverChecked: document.querySelector("#render-translation-hover")?.checked,
+      accentColors: [...document.querySelector("#render-subject-preset").options].slice(1).map((option) => option.value),
+      allColorControlsReady: [...document.querySelectorAll(".render-color-preset")]
+        .every((select) => select.options.length === 9 && getComputedStyle(select).backgroundColor !== "rgba(0, 0, 0, 0)"),
       boundariesChecked: document.querySelector("#render-boundaries")?.checked,
       importanceChecked: document.querySelector("#render-importance")?.checked,
       grammarChecked: document.querySelector("#render-grammar")?.checked,
@@ -187,13 +211,47 @@ try {
   assert.match(optionsStyle.buttonBackground, /228, 184, 99/u);
   assert.ok(optionsStyle.inputHeight >= 48);
   assert.equal(optionsStyle.statusSuccess, true);
+  assert.equal(optionsStyle.hasAnalysisPanel, true);
+  assert.equal(optionsStyle.analysisConcurrency, 10);
+  assert.equal(optionsStyle.hasParserControlsPanel, true);
+  assert.equal(optionsStyle.mainContentOnlyChecked, true);
   assert.equal(optionsStyle.hasRenderPanel, true);
+  assert.equal(optionsStyle.hasTranslationPanel, true);
+  assert.equal(optionsStyle.translationControlsInOwnPanel, true);
+  assert.equal(optionsStyle.renderHasTranslationControls, false);
   assert.equal(optionsStyle.highlightRowCount, 7);
   assert.equal(optionsStyle.allHighlightsEnabled, true);
   assert.equal(optionsStyle.allModesText, true);
+  assert.ok(optionsStyle.previewMarkCount > 0);
+  assert.equal(optionsStyle.previewSubjectColor, "rgb(7, 91, 198)");
+  assert.equal(optionsStyle.previewBoundariesHidden, true);
+  assert.equal(optionsStyle.fullPhrasesChecked, true);
+  assert.equal(optionsStyle.translationChecked, true);
+  assert.equal(optionsStyle.translationHoverChecked, true);
+  assert.deepEqual(optionsStyle.accentColors, [
+    "#0088FF", "#CB30E0", "#FF2D55", "#FF383C", "#FF8D28", "#FFCC00", "#34C759", "#98989D",
+  ]);
+  assert.equal(optionsStyle.allColorControlsReady, true);
   assert.equal(optionsStyle.boundariesChecked, false);
   assert.equal(optionsStyle.importanceChecked, true);
   assert.equal(optionsStyle.grammarChecked, true);
+  await options.fill("#analysis-concurrency", "7");
+  await options.locator("#analysis-concurrency").blur();
+  await options.waitForFunction(async () => (await chrome.storage.local.get("displaySettings")).displaySettings.analysisConcurrency === 7);
+  await options.uncheck("#analysis-main-content-only");
+  await options.waitForFunction(async () => (await chrome.storage.local.get("displaySettings")).displaySettings.mainContentOnly === false);
+  await options.check("#analysis-main-content-only");
+  await options.uncheck("#render-full-phrases");
+  await options.waitForFunction(() => getComputedStyle(document.querySelector("[data-preview-phrase-only]")).color === "rgb(138, 90, 0)");
+  assert.equal(await options.evaluate(async () => (await chrome.storage.local.get("displaySettings")).displaySettings.fullPhrases), false);
+  await options.check("#render-full-phrases");
+  await options.waitForFunction(() => getComputedStyle(document.querySelector("[data-preview-phrase-only]")).color === "rgb(7, 91, 198)");
+  await options.uncheck("#render-translation");
+  await options.waitForFunction(async () => (await chrome.storage.local.get("displaySettings")).displaySettings.translation === false);
+  await options.check("#render-translation");
+  await options.uncheck("#render-translation-hover");
+  await options.waitForFunction(async () => (await chrome.storage.local.get("displaySettings")).displaySettings.translationHover === false);
+  await options.check("#render-translation-hover");
 
   const article = await context.newPage();
   await article.goto(`http://127.0.0.1:${port}/article`);
@@ -236,17 +294,17 @@ try {
   await popup.click("#analyze");
   await secondParagraphGate.started;
   await article.waitForFunction(() => CSS.highlights.get("linguamark-subject")?.size === 5);
-  await popup.waitForFunction(() => document.querySelector("#status")?.textContent?.includes("已完成 1/2 个可见段落"));
+  await popup.waitForFunction(() => document.querySelector("#status")?.textContent?.includes("已解析 5/7 句"));
   const incrementalSubjects = await article.evaluate(() => {
     const highlight = CSS.highlights.get("linguamark-subject");
     return highlight ? Array.from(highlight).map((range) => range.toString()) : [];
   });
   assert.deepEqual(incrementalSubjects, ["Birds", "She", "I", "He", "They"]);
-  assert.match(await popup.textContent("#status") ?? "", /已完成 1\/2 个可见段落/u);
+  assert.match(await popup.textContent("#status") ?? "", /已解析 5\/7 句/u);
   secondParagraphGate.release();
-  await popup.waitForFunction(() => document.querySelector("#status")?.textContent?.includes("已标记 2/2 个可见段落"), null, { timeout: 20_000 });
+  await popup.waitForFunction(() => document.querySelector("#status")?.textContent?.includes("已标记 7/7 句"), null, { timeout: 20_000 });
   const popupStatus = await popup.textContent("#status");
-  assert.match(popupStatus ?? "", /已标记 2\/2 个可见段落/u, diagnostics.join("\n"));
+  assert.match(popupStatus ?? "", /已标记 7\/7 句/u, diagnostics.join("\n"));
 
   const rendered = await article.evaluate((expected) => {
     const highlightText = (name) => {
@@ -275,11 +333,51 @@ try {
   assert.equal(rendered.separatorsAreEmpty, true);
   assert.equal(rendered.separatorsHidden, true);
   assert.match(rendered.separatorGlyph, /│/u);
-  assert.deepEqual(rendered.subjects, ["Birds", "She", "I", "He", "They", "Dr. Smith"]);
-  assert.deepEqual(rendered.verbs, ["fly", "is", "read", "gave", "made", "paid"]);
+  assert.deepEqual(rendered.subjects, ["Birds", "She", "I", "He", "They", "Dr. Smith", "He", "his assistant"]);
+  assert.deepEqual(rendered.verbs, ["fly", "is", "read", "gave", "made", "paid", "left", "stayed"]);
   assert.equal(rendered.primaryCount, 2);
   assert.equal(rendered.supportingCount, 3);
   assert.equal(rendered.apiKeyInDom, false);
+  assert.doesNotMatch(JSON.stringify(requests.slice(1).map((request) => request.body.messages)), /CODE_BLOCK_SENTINEL/u);
+
+  const firstSentencePoint = await article.evaluate(() => {
+    const text = document.querySelector("#patterns").firstChild;
+    const range = document.createRange();
+    range.setStart(text, 0);
+    range.setEnd(text, "Birds fly.".length);
+    const rect = range.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  });
+  await article.mouse.move(firstSentencePoint.x, firstSentencePoint.y);
+  await article.waitForFunction(() => document.querySelector(".linguamark-translation:not([hidden])")?.textContent === "鸟会飞。");
+  const translatedSentencePlacement = await article.evaluate(() => {
+    const text = document.querySelector("#edge").firstChild;
+    const range = document.createRange();
+    range.setStart(text, 0);
+    range.setEnd(text, "Dr. Smith paid $3.50.".length);
+    const rect = range.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  });
+  await article.mouse.move(translatedSentencePlacement.x, translatedSentencePlacement.y);
+  await article.waitForFunction(() => document.querySelector(".linguamark-translation:not([hidden])")?.textContent === "史密斯博士支付了 3.50 美元。");
+  const translationPlacement = await article.evaluate(() => {
+    const text = document.querySelector("#edge").firstChild;
+    const range = document.createRange();
+    range.setStart(text, 0);
+    range.setEnd(text, "Dr. Smith paid $3.50.".length);
+    const sentence = range.getBoundingClientRect();
+    const tooltip = document.querySelector(".linguamark-translation").getBoundingClientRect();
+    return {
+      sentenceTop: sentence.top,
+      sentenceCenter: sentence.left + sentence.width / 2,
+      tooltipBottom: tooltip.bottom,
+      tooltipCenter: tooltip.left + tooltip.width / 2,
+    };
+  });
+  assert.ok(translationPlacement.tooltipBottom <= translationPlacement.sentenceTop);
+  assert.ok(Math.abs(translationPlacement.tooltipCenter - translationPlacement.sentenceCenter) < 1);
+  await article.mouse.move(2, 2);
+  await article.waitForFunction(() => document.querySelector(".linguamark-translation")?.hidden === true);
 
   const selectedText = await article.evaluate(() => {
     const selection = getSelection();
@@ -302,17 +400,21 @@ try {
   await article.waitForFunction(() => !CSS.highlights.has("linguamark-subject"));
   await options.check("#render-subject-enabled");
   await article.waitForFunction(() => CSS.highlights.has("linguamark-subject"));
-  await options.evaluate(() => {
-    const input = document.querySelector("#render-subject-color");
-    input.value = "#123456";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  await options.selectOption("#render-subject-preset", "#FF383C");
+  await article.waitForFunction(() => getComputedStyle(document.documentElement)
+    .getPropertyValue("--linguamark-subject-color").trim() === "#FF383C");
+  assert.equal(await options.inputValue("#render-subject-color"), "#FF383C");
+  await options.fill("#render-subject-color", "#123456");
   await article.waitForFunction(() => getComputedStyle(document.documentElement)
     .getPropertyValue("--linguamark-subject-color").trim() === "#123456");
+  assert.equal(await options.inputValue("#render-subject-preset"), "");
   await options.selectOption("#render-subject-mode", "underline");
   await article.waitForFunction(() => CSS.highlights.has("linguamark-subject-underline")
     && !CSS.highlights.has("linguamark-subject"));
+  await options.waitForFunction(() => {
+    const style = getComputedStyle(document.querySelector("[data-preview-role='subject']"));
+    return style.textDecorationLine.includes("underline") && style.textDecorationColor === "rgb(18, 52, 86)";
+  });
   await options.selectOption("#render-subject-mode", "text");
   await article.waitForFunction(() => CSS.highlights.has("linguamark-subject")
     && !CSS.highlights.has("linguamark-subject-underline"));
@@ -347,15 +449,18 @@ try {
   await popup.bringToFront();
   await popup.click("#analyze");
   await staleGate.started;
-  await article.evaluate(() => document.querySelector("#patterns").prepend("Changed "));
+  await article.evaluate(() => {
+    const text = document.querySelector("#patterns").firstChild;
+    text.data = `Changed ${text.data}`;
+  });
   staleGate.release();
-  await popup.waitForFunction(() => document.querySelector("#status")?.textContent?.includes("已标记 1/2 个可见段落"), null, { timeout: 20_000 });
+  await popup.waitForFunction(() => document.querySelector("#status")?.textContent?.includes("已标记 2/7 句"), null, { timeout: 20_000 });
   const subjectsAfterStaleResponse = await article.evaluate(() => {
     const highlight = CSS.highlights.get("linguamark-subject");
     return highlight ? Array.from(highlight).map((range) => range.toString()) : [];
   });
-  assert.deepEqual(subjectsAfterStaleResponse, ["Dr. Smith"]);
-  assert.equal(requests.length, 5);
+  assert.deepEqual(subjectsAfterStaleResponse, ["Birds", "She", "I", "He", "They", "Dr. Smith", "He", "his assistant"]);
+  assert.equal(requests.length, 6);
 
   console.log(`Chrome E2E passed with extension ${extensionId}`);
 } finally {
@@ -401,6 +506,7 @@ function createIndexedResponse(input) {
         role: role.role,
         tokenIds: tokenIdsForQuote(indexed, role.quote),
       })),
+      translation: sentence.translation,
     };
   });
   if (input.format !== "compact") return { sentences };
@@ -417,6 +523,7 @@ function createIndexedResponse(input) {
         roleCodes[role.role],
         role.tokenIds.map((id) => id.replace(/^s\d+t/u, "")),
       ]),
+      sentence.translation,
     ]),
   };
 }

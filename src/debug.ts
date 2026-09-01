@@ -1,5 +1,5 @@
 type LogDetails = Record<string, unknown>;
-type LogScope = "background" | "content" | "popup" | "options";
+type LogScope = "background" | "content" | "popup" | "options" | "directory";
 
 const SECRET_KEYS = new Set([
   "apikey",
@@ -19,10 +19,6 @@ export function logInfo(scope: LogScope, event: string, details: LogDetails = {}
 
 export function logWarn(scope: LogScope, event: string, details: LogDetails = {}): void {
   console.warn(`[LinguaMark:${scope}] ${event}`, sanitize(details));
-}
-
-export function logError(scope: LogScope, event: string, details: LogDetails = {}): void {
-  console.error(`[LinguaMark:${scope}] ${event}`, sanitize(details));
 }
 
 function sanitize(value: unknown, key = "", depth = 0): unknown {

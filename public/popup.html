@@ -23,8 +23,12 @@
         </header>
 
         <button id="analyze" class="primary action-button" type="button">
-          <span>分析可见内容</span>
+          <span>分析可见文字</span>
           <span class="button-arrow" aria-hidden="true">↗</span>
+        </button>
+        <button id="open-reader" class="action-button reader-action" type="button">
+          <span>打开阅读器</span>
+          <span class="button-arrow" aria-hidden="true">→</span>
         </button>
         <p id="status" class="status" role="status" aria-live="polite">准备就绪</p>
 
@@ -51,7 +55,7 @@
             <label class="toggle-row">
               <span class="toggle-copy">
                 <strong>主谓宾与补语</strong>
-                <small>显示英语句法核心词</small>
+                <small>显示英语句法角色</small>
               </span>
               <input id="grammar" type="checkbox" role="switch" aria-label="显示主谓宾与补语">
             </label>

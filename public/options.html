@@ -8,7 +8,7 @@
   </head>
   <body class="options-page">
     <main class="options-shell">
-      <section class="glass-panel settings-panel" aria-labelledby="settings-title">
+      <section class="glass-panel settings-panel" aria-label="LinguaMark">
         <header class="panel-header options-header">
           <div class="brand-row">
             <span class="brand-mark" aria-hidden="true">LM</span>
@@ -18,10 +18,21 @@
             </div>
             <span class="status-pill">PRIVATE</span>
           </div>
-          <h1 id="settings-title">连接你的<br>语言模型。</h1>
-          <p class="description">凭据保留在本地，模型请求只从扩展 Background service worker 发出。</p>
+          <nav id="options-tabs" class="options-tabs" role="tablist" aria-label="设置页标签">
+            <button id="settings-tab" type="button" role="tab" aria-selected="true" aria-controls="settings-tab-panel" data-heading="settings-tab-heading">设置</button>
+            <button id="collection-tab" type="button" role="tab" aria-selected="false" aria-controls="collection-tab-panel" data-heading="collection-tab-heading" tabindex="-1">收藏</button>
+          </nav>
+          <div id="settings-tab-heading" class="options-tab-heading">
+            <h1 id="settings-title">连接你的<br>语言模型。</h1>
+            <p class="description">凭据保留在本地，模型请求只从扩展 Background service worker 发出。</p>
+          </div>
+          <div id="collection-tab-heading" class="options-tab-heading" hidden>
+            <h1>你的<br>英文收藏。</h1>
+            <p class="description">按收藏日期回顾特殊词汇、经典短语和句式。</p>
+          </div>
         </header>
 
+        <div id="settings-tab-panel" class="options-tab-panel" role="tabpanel" aria-labelledby="settings-tab">
         <form id="settings-form" class="settings-form">
           <label class="field full-width">
             <span class="field-label">供应商 <small>PROVIDER</small></span>
@@ -54,10 +65,117 @@
           </div>
         </form>
 
+        <section class="control-section analysis-settings" aria-labelledby="analysis-title">
+          <div class="section-heading">
+            <h2 id="analysis-title">分析设置</h2>
+            <span>ANALYSIS</span>
+          </div>
+          <label class="analysis-row">
+            <span class="toggle-copy">
+              <strong>预加载</strong>
+              <small>提前分析当前可见区域下方的内容</small>
+            </span>
+            <input id="analysis-preload" class="render-enabled" type="checkbox" role="switch" checked aria-label="启用解析预加载">
+          </label>
+          <label class="analysis-row">
+            <span class="toggle-copy">
+              <strong>向下预加载比例（%）</strong>
+              <small>占当前屏幕高度，用于向下扩展分析范围</small>
+            </span>
+            <input id="analysis-preload-percent" class="analysis-number" type="number" min="0" step="1" value="30" inputmode="decimal" aria-label="向下预加载占屏幕高度的百分比">
+          </label>
+          <label class="analysis-row">
+            <span class="toggle-copy">
+              <strong>并发上限</strong>
+              <small>同时分析的文本块数量；下次分析生效</small>
+            </span>
+            <input id="analysis-concurrency" class="analysis-number" type="number" min="1" max="20" step="1" value="10" inputmode="numeric" aria-label="分析并发上限">
+          </label>
+        </section>
+
+        <section class="control-section parser-controls" aria-labelledby="parser-controls-title">
+          <div class="section-heading">
+            <h2 id="parser-controls-title">解析控制</h2>
+            <span>PARSER</span>
+          </div>
+          <div class="toggle-list">
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>仅渲染主内容</strong>
+                <small>忽略导航栏、侧边栏和 UI 控件；下次分析生效</small>
+              </span>
+              <input id="analysis-main-content-only" type="checkbox" role="switch" checked aria-label="仅分析并渲染主内容">
+            </label>
+          </div>
+        </section>
+
+        <section class="control-section excerpt-settings" aria-labelledby="excerpt-settings-title">
+          <div class="section-heading">
+            <h2 id="excerpt-settings-title">摘录设置</h2>
+            <span>EXCERPTS</span>
+          </div>
+          <div class="toggle-list">
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>单词摘录</strong>
+                <small>提取值得学习的特殊词汇；下次分析生效</small>
+              </span>
+              <input id="excerpt-vocabulary" type="checkbox" role="switch" checked aria-label="启用单词摘录">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>短语摘录</strong>
+                <small>提取地道搭配和惯用短语；下次分析生效</small>
+              </span>
+              <input id="excerpt-phrase" type="checkbox" role="switch" checked aria-label="启用短语摘录">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>句子摘录</strong>
+                <small>提取包含代表性句式的完整句子；下次分析生效</small>
+              </span>
+              <input id="excerpt-pattern" type="checkbox" role="switch" checked aria-label="启用句子摘录">
+            </label>
+          </div>
+        </section>
+
+        <section class="control-section render-preview" aria-labelledby="render-preview-title">
+          <div class="section-heading">
+            <h2 id="render-preview-title">效果预览</h2>
+            <span>PREVIEW</span>
+          </div>
+          <div class="render-preview-copy" aria-label="当前渲染效果">
+            <p><span data-preview-importance="primary" data-preview-role="subject" data-preview-phrase-only>Curious </span><span data-preview-importance="primary" data-preview-role="subject">readers</span><span data-preview-importance="primary"> </span><span data-preview-importance="primary" data-preview-role="verb">discover</span><span data-preview-importance="primary"> </span><span data-preview-importance="primary" data-preview-role="object" data-preview-phrase-only>the main </span><span data-preview-importance="primary" data-preview-role="object">idea</span><span data-preview-importance="primary">.</span><span class="render-preview-boundary" aria-hidden="true" hidden>│</span><span data-preview-importance="supporting" data-preview-role="subject" data-preview-phrase-only>Clear </span><span data-preview-importance="supporting" data-preview-role="subject">examples</span><span data-preview-importance="supporting"> </span><span data-preview-importance="supporting" data-preview-role="verb">make</span><span data-preview-importance="supporting"> </span><span data-preview-importance="supporting" data-preview-role="object" data-preview-phrase-only>its </span><span data-preview-importance="supporting" data-preview-role="object">structure</span><span data-preview-importance="supporting"> </span><span data-preview-importance="supporting" data-preview-role="complement">easy</span><span data-preview-importance="supporting" data-preview-role="complement" data-preview-phrase-only> to see</span><span data-preview-importance="supporting">.</span><span class="render-preview-boundary" aria-hidden="true" hidden>│</span><span data-preview-importance="detail" data-preview-role="subject" data-preview-phrase-only>Small </span><span data-preview-importance="detail" data-preview-role="subject">clues</span><span data-preview-importance="detail"> </span><span data-preview-importance="detail" data-preview-role="verb">confirm</span><span data-preview-importance="detail"> </span><span data-preview-importance="detail" data-preview-role="object" data-preview-phrase-only>the </span><span data-preview-importance="detail" data-preview-role="object">meaning</span><span data-preview-importance="detail">.</span></p>
+          </div>
+        </section>
+
+        <section class="control-section translation-settings" aria-labelledby="translation-title">
+          <div class="section-heading">
+            <h2 id="translation-title">翻译设置</h2>
+            <span>TRANSLATION</span>
+          </div>
+          <div class="toggle-list">
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>逐句翻译</strong>
+                <small>分析时生成简体中文翻译；下次分析生效</small>
+              </span>
+              <input id="render-translation" type="checkbox" role="switch" checked aria-label="启用逐句翻译">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>悬浮显示翻译</strong>
+                <small>鼠标停在句子上时显示；快捷键不受影响</small>
+              </span>
+              <input id="render-translation-hover" type="checkbox" role="switch" checked aria-label="悬浮显示句子翻译">
+            </label>
+          </div>
+        </section>
+
         <section class="control-section render-settings" aria-labelledby="render-title">
           <div class="section-heading">
-            <h2 id="render-title">渲染效果</h2>
-            <span>RENDER</span>
+            <h2 id="render-title">渲染配置</h2>
+            <span>CONFIG</span>
           </div>
           <div class="toggle-list">
             <label class="toggle-row">
@@ -77,9 +195,16 @@
             <label class="toggle-row">
               <span class="toggle-copy">
                 <strong>主谓宾与补语</strong>
-                <small>显示句法核心词颜色</small>
+                <small>显示句法角色颜色</small>
               </span>
               <input id="render-grammar" type="checkbox" role="switch" aria-label="显示主谓宾与补语">
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-copy">
+                <strong>完整句法短语</strong>
+                <small>包含限定词与内部修饰语；下次分析生效</small>
+              </span>
+              <input id="render-full-phrases" type="checkbox" role="switch" checked aria-label="标记完整句法短语">
             </label>
           </div>
           <table class="render-table" aria-label="文本标记类型">
@@ -88,7 +213,7 @@
                 <th scope="col">类型</th>
                 <th scope="col">高亮</th>
                 <th scope="col">模式</th>
-                <th scope="col">颜色</th>
+                <th scope="col">颜色 / HEX</th>
               </tr>
             </thead>
             <tbody>
@@ -96,43 +221,43 @@
                 <td class="render-type"><strong>主旨</strong><small>PRIMARY</small></td>
                 <td class="render-toggle-cell"><input id="render-primary-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮主旨"></td>
                 <td><select id="render-primary-mode" class="render-mode" aria-label="主旨高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
-                <td><div class="color-editor"><input id="render-primary-color" class="render-color" type="color" value="#8A5A00" aria-label="主旨颜色"><output id="render-primary-value" for="render-primary-color">#8A5A00</output></div></td>
+                <td><div class="color-editor"><select id="render-primary-preset" class="render-color-preset" aria-label="主旨内置颜色"><option value="">自定义颜色</option></select><input id="render-primary-color" class="render-color" type="text" value="#8A5A00" maxlength="7" pattern="#[0-9A-Fa-f]{6}" placeholder="#RRGGBB" spellcheck="false" autocomplete="off" aria-label="主旨颜色"></div></td>
               </tr>
               <tr>
                 <td class="render-type"><strong>支撑</strong><small>SUPPORTING</small></td>
                 <td class="render-toggle-cell"><input id="render-supporting-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮支撑"></td>
                 <td><select id="render-supporting-mode" class="render-mode" aria-label="支撑高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
-                <td><div class="color-editor"><input id="render-supporting-color" class="render-color" type="color" value="#344054" aria-label="支撑颜色"><output id="render-supporting-value" for="render-supporting-color">#344054</output></div></td>
+                <td><div class="color-editor"><select id="render-supporting-preset" class="render-color-preset" aria-label="支撑内置颜色"><option value="">自定义颜色</option></select><input id="render-supporting-color" class="render-color" type="text" value="#344054" maxlength="7" pattern="#[0-9A-Fa-f]{6}" placeholder="#RRGGBB" spellcheck="false" autocomplete="off" aria-label="支撑颜色"></div></td>
               </tr>
               <tr>
                 <td class="render-type"><strong>细节</strong><small>DETAIL</small></td>
                 <td class="render-toggle-cell"><input id="render-detail-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮细节"></td>
                 <td><select id="render-detail-mode" class="render-mode" aria-label="细节高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
-                <td><div class="color-editor"><input id="render-detail-color" class="render-color" type="color" value="#667085" aria-label="细节颜色"><output id="render-detail-value" for="render-detail-color">#667085</output></div></td>
+                <td><div class="color-editor"><select id="render-detail-preset" class="render-color-preset" aria-label="细节内置颜色"><option value="">自定义颜色</option></select><input id="render-detail-color" class="render-color" type="text" value="#667085" maxlength="7" pattern="#[0-9A-Fa-f]{6}" placeholder="#RRGGBB" spellcheck="false" autocomplete="off" aria-label="细节颜色"></div></td>
               </tr>
               <tr>
                 <td class="render-type"><strong>主语</strong><small>SUBJECT · S</small></td>
                 <td class="render-toggle-cell"><input id="render-subject-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮主语"></td>
                 <td><select id="render-subject-mode" class="render-mode" aria-label="主语高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
-                <td><div class="color-editor"><input id="render-subject-color" class="render-color" type="color" value="#075BC6" aria-label="主语颜色"><output id="render-subject-value" for="render-subject-color">#075BC6</output></div></td>
+                <td><div class="color-editor"><select id="render-subject-preset" class="render-color-preset" aria-label="主语内置颜色"><option value="">自定义颜色</option></select><input id="render-subject-color" class="render-color" type="text" value="#075BC6" maxlength="7" pattern="#[0-9A-Fa-f]{6}" placeholder="#RRGGBB" spellcheck="false" autocomplete="off" aria-label="主语颜色"></div></td>
               </tr>
               <tr>
                 <td class="render-type"><strong>谓语</strong><small>VERB · V</small></td>
                 <td class="render-toggle-cell"><input id="render-verb-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮谓语"></td>
                 <td><select id="render-verb-mode" class="render-mode" aria-label="谓语高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
-                <td><div class="color-editor"><input id="render-verb-color" class="render-color" type="color" value="#B42318" aria-label="谓语颜色"><output id="render-verb-value" for="render-verb-color">#B42318</output></div></td>
+                <td><div class="color-editor"><select id="render-verb-preset" class="render-color-preset" aria-label="谓语内置颜色"><option value="">自定义颜色</option></select><input id="render-verb-color" class="render-color" type="text" value="#B42318" maxlength="7" pattern="#[0-9A-Fa-f]{6}" placeholder="#RRGGBB" spellcheck="false" autocomplete="off" aria-label="谓语颜色"></div></td>
               </tr>
               <tr>
                 <td class="render-type"><strong>宾语</strong><small>OBJECT · O</small></td>
                 <td class="render-toggle-cell"><input id="render-object-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮宾语"></td>
                 <td><select id="render-object-mode" class="render-mode" aria-label="宾语高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
-                <td><div class="color-editor"><input id="render-object-color" class="render-color" type="color" value="#067647" aria-label="宾语颜色"><output id="render-object-value" for="render-object-color">#067647</output></div></td>
+                <td><div class="color-editor"><select id="render-object-preset" class="render-color-preset" aria-label="宾语内置颜色"><option value="">自定义颜色</option></select><input id="render-object-color" class="render-color" type="text" value="#067647" maxlength="7" pattern="#[0-9A-Fa-f]{6}" placeholder="#RRGGBB" spellcheck="false" autocomplete="off" aria-label="宾语颜色"></div></td>
               </tr>
               <tr>
                 <td class="render-type"><strong>补语</strong><small>COMPLEMENT · C</small></td>
                 <td class="render-toggle-cell"><input id="render-complement-enabled" class="render-enabled" type="checkbox" role="switch" checked aria-label="高亮补语"></td>
                 <td><select id="render-complement-mode" class="render-mode" aria-label="补语高亮模式"><option value="text">文字变色</option><option value="underline">彩色下划线</option></select></td>
-                <td><div class="color-editor"><input id="render-complement-color" class="render-color" type="color" value="#7A3DB8" aria-label="补语颜色"><output id="render-complement-value" for="render-complement-color">#7A3DB8</output></div></td>
+                <td><div class="color-editor"><select id="render-complement-preset" class="render-color-preset" aria-label="补语内置颜色"><option value="">自定义颜色</option></select><input id="render-complement-color" class="render-color" type="text" value="#7A3DB8" maxlength="7" pattern="#[0-9A-Fa-f]{6}" placeholder="#RRGGBB" spellcheck="false" autocomplete="off" aria-label="补语颜色"></div></td>
               </tr>
             </tbody>
           </table>
@@ -145,6 +270,16 @@
             <p>API Key 保存在 <code>chrome.storage.local</code>，不会进入网页 DOM；本地存储并不是加密保险库。</p>
           </div>
         </aside>
+        </div>
+
+        <section id="collection-tab-panel" class="options-tab-panel" role="tabpanel" aria-labelledby="collection-tab" hidden>
+          <div id="collection-groups" class="collection-groups"></div>
+          <div id="collection-empty" class="collection-empty">
+            <span aria-hidden="true">◇</span>
+            <h2>还没有收藏</h2>
+            <p>在文章学习卡片中收藏内容后，它们会按日期显示在这里。</p>
+          </div>
+        </section>
       </section>
     </main>
     <script src="options.js"></script>
