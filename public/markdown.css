@@ -720,6 +720,18 @@ footer {
     line-height: 1.4;
 }
 
+/* Mermaid 按未装饰的标签尺寸布局；让主题框溢出可见并保持居中。 */
+#write .md-diagram-panel .edgeLabel foreignObject {
+    overflow: visible !important;
+}
+#write .md-diagram-panel .edgeLabel foreignObject > .labelBkg {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
 /* 第 2 步：只给最外层元素（foreignObject 的直接子元素 / body 包装）加主题框 */
 #write .md-diagram-panel .edgeLabel foreignObject > *:not(.labelBkg):not(:empty),
 #write .md-diagram-panel .edgeLabel foreignObject > body > *:not(.labelBkg):not(:empty),
@@ -763,6 +775,11 @@ footer {
     fill: var(--fg-main) !important;
     font-family: var(--font-body) !important;
     font-size: 16px !important;
+}
+
+/* Mermaid 按 normal 字距测量 HTML 标签，避免正文段落字距撑出 foreignObject。 */
+#write .md-diagram-panel foreignObject p {
+    letter-spacing: normal !important;
 }
 
 /* 图表内文字选中 — 主题深绿 */
@@ -2665,6 +2682,9 @@ footer {
     #write .md-math-block {
         box-shadow: none;
     }
+    .linguamark-markdown-character-count {
+        display: none !important;
+    }
 }
 
 /* ---------- LinguaMark 只读 Viewer 适配 ---------- */
@@ -2673,7 +2693,7 @@ body.linguamark-markdown-page {
     margin: 0;
 }
 
-html:has(body.linguamark-markdown-page) {
+html.linguamark-reload-scroll-animation:has(body.linguamark-markdown-page) {
     scroll-behavior: smooth;
 }
 
@@ -2710,12 +2730,12 @@ html:has(body.linguamark-markdown-page) {
 }
 
 .linguamark-markdown-toc-toggle:hover,
-.linguamark-markdown-toc-toggle:focus-visible {
+.linguamark-markdown-toc-toggle:focus-within {
     border-color: var(--accent);
     background: var(--bg-quote);
 }
 
-.linguamark-markdown-toc-toggle:focus-visible {
+.linguamark-markdown-toc-toggle:focus-within {
     outline: 3px solid rgba(74, 124, 89, 0.2);
     outline-offset: 2px;
 }
@@ -2724,9 +2744,32 @@ html:has(body.linguamark-markdown-page) {
     display: none;
 }
 
-.linguamark-markdown-toc-toggle[aria-expanded="true"] {
+.linguamark-markdown-toc-toggle.is-open {
     background: var(--accent-deep);
     color: var(--bg-write);
+}
+
+.linguamark-markdown-sidebar-select {
+    max-width: 84px;
+    min-width: 0;
+    padding: 0;
+    appearance: none;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.linguamark-markdown-sidebar-select option {
+    background: var(--bg-write);
+    color: var(--fg-main);
+}
+
+.linguamark-markdown-sidebar-indicator {
+    font: 11px/1 system-ui, sans-serif;
+    pointer-events: none;
 }
 
 .linguamark-markdown-directory-button {
@@ -2786,6 +2829,7 @@ html:has(body.linguamark-markdown-page) {
 }
 
 .linguamark-markdown-width-button,
+.linguamark-markdown-animation-button,
 .linguamark-markdown-favorite-button,
 .linguamark-markdown-library-button {
     display: inline-flex;
@@ -2795,6 +2839,7 @@ html:has(body.linguamark-markdown-page) {
 }
 
 .linguamark-markdown-width-button[aria-pressed="true"],
+.linguamark-markdown-animation-button[aria-checked="true"],
 .linguamark-markdown-favorite-button.is-saved {
     border-color: var(--accent-deep);
     background: var(--accent-deep);
@@ -2993,6 +3038,7 @@ html:has(body.linguamark-markdown-page) {
 
 .linguamark-markdown-shell {
     --linguamark-markdown-toc-width: 272px;
+    --linguamark-markdown-status-space: 32px;
     position: relative;
     display: grid;
     min-height: calc(100vh - 58px);
@@ -3012,6 +3058,20 @@ body.linguamark-markdown-page:not(.linguamark-toc-open) .linguamark-markdown-she
 
 .linguamark-markdown-content {
     min-width: 0;
+}
+
+.linguamark-markdown-character-count {
+    position: fixed;
+    bottom: 16px;
+    left: 18px;
+    z-index: 2147482000;
+    color: var(--fg-muted);
+    font: 600 12px/1.2 var(--font-body);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    opacity: 0.72;
+    pointer-events: none;
+    user-select: none;
 }
 
 .linguamark-markdown-toc-resizer {
@@ -3068,7 +3128,7 @@ body.linguamark-toc-resizing .linguamark-markdown-shell {
 .linguamark-markdown-toc {
     position: sticky;
     top: 74px;
-    height: calc(100vh - 90px);
+    height: calc(100vh - 90px - var(--linguamark-markdown-status-space));
     min-width: 0;
     box-sizing: border-box;
     margin: 16px 0 16px 16px;
@@ -3620,6 +3680,7 @@ body.linguamark-markdown-page.linguamark-full-width #write {
     }
 
     .linguamark-markdown-width-button,
+    .linguamark-markdown-animation-button,
     .linguamark-markdown-favorite-button,
     .linguamark-markdown-library-button {
         width: 38px;
@@ -3658,7 +3719,7 @@ body.linguamark-markdown-page.linguamark-full-width #write {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    html:has(body.linguamark-markdown-page) {
+    html.linguamark-reload-scroll-animation:has(body.linguamark-markdown-page) {
         scroll-behavior: auto;
     }
 

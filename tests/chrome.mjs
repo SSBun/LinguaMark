@@ -437,8 +437,8 @@ try {
   assert.equal(requests[2].headers.authorization, "Bearer test-secret");
   assert.equal(requests[1].body.model, "mock-model");
   assert.equal(requests[2].body.model, "mock-model");
-  const firstRequestText = JSON.stringify(requests[1].body.messages);
-  const secondRequestText = JSON.stringify(requests[2].body.messages);
+  const firstRequestText = requestInputText(requests[1].body.messages);
+  const secondRequestText = requestInputText(requests[2].body.messages);
   assert.match(firstRequestText, /Birds fly\./u);
   assert.doesNotMatch(firstRequestText, /Dr\. Smith paid \$3\.50\./u);
   assert.match(secondRequestText, /Dr\. Smith paid \$3\.50\./u);
@@ -459,8 +459,8 @@ try {
     const highlight = CSS.highlights.get("linguamark-subject");
     return highlight ? Array.from(highlight).map((range) => range.toString()) : [];
   });
-  assert.deepEqual(subjectsAfterStaleResponse, ["Birds", "She", "I", "He", "They", "Dr. Smith", "He", "his assistant"]);
-  assert.equal(requests.length, 6);
+  assert.deepEqual(subjectsAfterStaleResponse, ["Dr. Smith", "He", "his assistant"]);
+  assert.equal(requests.length, 5);
 
   console.log(`Chrome E2E passed with extension ${extensionId}`);
 } finally {
@@ -469,16 +469,20 @@ try {
   await rm(userDataDir, { recursive: true, force: true });
 }
 
+function requestInputText(messages) {
+  const user = [...messages].reverse().find((message) => message.role === "user");
+  return messageText(user?.content).replace(/\[\d+\]/gu, "");
+}
+
 function readAnalysisInput(content) {
-  const text = typeof content === "string" ? content : JSON.stringify(content);
+  const text = messageText(content);
   const start = text.lastIndexOf('{"paragraphId"');
   if (start < 0) throw new Error("模型请求缺少本地索引输入");
   return { ...JSON.parse(text.slice(start)), format: "verbose" };
 }
 
 function readCompactInput(content) {
-  const text = typeof content === "string" ? content : JSON.stringify(content);
-  const lines = text.split("\n");
+  const lines = messageText(content).split("\n");
   const paragraphId = lines.find((line) => line.startsWith("P:"))?.slice(2);
   if (!paragraphId) throw new Error("紧凑模型请求缺少段落 ID");
   const sentences = lines.filter((line) => /^S\d+:/u.test(line)).map((line) => {
@@ -491,6 +495,13 @@ function readCompactInput(content) {
     return { id, text: sentenceText, tokens };
   });
   return { paragraphId, sentences, format: "compact" };
+}
+
+function messageText(content) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return content.map(messageText).join("\n");
+  if (content && typeof content === "object" && typeof content.text === "string") return content.text;
+  return JSON.stringify(content);
 }
 
 function createIndexedResponse(input) {

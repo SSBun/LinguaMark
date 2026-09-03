@@ -1,6 +1,7 @@
 const DIRECTORY_DB_NAME = "linguamark-directory";
 const DIRECTORY_STORE_NAME = "handles";
 const DIRECTORY_HANDLE_KEY = "root";
+const FILE_HANDLE_KEY_PREFIX = "file:";
 
 const IMAGE_MIME_TYPES: Record<string, string> = {
   ".png": "image/png",
@@ -49,35 +50,29 @@ export function parseDirectoryPath(value: unknown): string[] | undefined {
 }
 
 export async function getStoredDirectoryHandle(tabId?: number): Promise<FileSystemDirectoryHandle | undefined> {
-  const database = await openDirectoryDatabase();
-  try {
-    const value = await requestValue(database.transaction(DIRECTORY_STORE_NAME).objectStore(DIRECTORY_STORE_NAME).get(directoryHandleKey(tabId)));
-    return isDirectoryHandle(value) ? value : undefined;
-  } finally {
-    database.close();
-  }
+  const value = await getStoredHandle(directoryHandleKey(tabId));
+  return isDirectoryHandle(value) ? value : undefined;
 }
 
-export async function storeDirectoryHandle(handle: FileSystemDirectoryHandle, tabId?: number): Promise<void> {
-  const database = await openDirectoryDatabase();
-  try {
-    const transaction = database.transaction(DIRECTORY_STORE_NAME, "readwrite");
-    transaction.objectStore(DIRECTORY_STORE_NAME).put(handle, directoryHandleKey(tabId));
-    await transactionComplete(transaction);
-  } finally {
-    database.close();
-  }
+export async function getStoredFileHandle(tabId: number): Promise<FileSystemFileHandle | undefined> {
+  const value = await getStoredHandle(fileHandleKey(tabId));
+  return isFileHandle(value) ? value : undefined;
 }
 
-export async function deleteStoredDirectoryHandle(tabId: number): Promise<void> {
-  const database = await openDirectoryDatabase();
-  try {
-    const transaction = database.transaction(DIRECTORY_STORE_NAME, "readwrite");
-    transaction.objectStore(DIRECTORY_STORE_NAME).delete(directoryHandleKey(tabId));
-    await transactionComplete(transaction);
-  } finally {
-    database.close();
-  }
+export function storeDirectoryHandle(handle: FileSystemDirectoryHandle, tabId?: number): Promise<void> {
+  return storeHandle(directoryHandleKey(tabId), handle);
+}
+
+export function storeFileHandle(handle: FileSystemFileHandle, tabId: number): Promise<void> {
+  return storeHandle(fileHandleKey(tabId), handle);
+}
+
+export function deleteStoredDirectoryHandle(tabId: number): Promise<void> {
+  return deleteStoredHandle(directoryHandleKey(tabId));
+}
+
+export function deleteStoredFileHandle(tabId: number): Promise<void> {
+  return deleteStoredHandle(fileHandleKey(tabId));
 }
 
 export async function queryDirectoryPermission(handle: FileSystemDirectoryHandle): Promise<PermissionState> {
@@ -95,28 +90,43 @@ export async function requestDirectoryPermission(handle: FileSystemDirectoryHand
 
 export async function readDirectoryState(tabId?: number): Promise<DirectoryBrowserState> {
   const root = await getStoredDirectoryHandle(tabId);
-  if (!root) return { status: "none" };
+  return root ? readDirectoryHandleState(root) : { status: "none" };
+}
+
+export async function readDirectoryHandleState(root: FileSystemDirectoryHandle): Promise<DirectoryBrowserState> {
   const status = await queryDirectoryPermission(root);
   if (status !== "granted") return { status, rootName: root.name };
   return { status, rootName: root.name, entries: await readDirectoryTree(root) };
 }
 
 export async function readStoredDirectoryFile(path: string, tabId?: number): Promise<DirectoryFileContent> {
+  const root = await getStoredDirectoryHandle(tabId);
+  if (!root) throw new Error("目录需要重新授权");
+  return readDirectoryHandleFile(root, path);
+}
+
+export async function readDirectoryHandleFile(
+  root: FileSystemDirectoryHandle,
+  path: string,
+): Promise<DirectoryFileContent> {
   const parts = parseDirectoryPath(path);
   if (!parts || parts.length === 0) throw new Error("文件路径无效");
-  const root = await getStoredDirectoryHandle(tabId);
-  if (!root || await queryDirectoryPermission(root) !== "granted") throw new Error("目录需要重新授权");
+  if (await queryDirectoryPermission(root) !== "granted") throw new Error("目录需要重新授权");
 
   let directory = root;
   for (const part of parts.slice(0, -1)) directory = await directory.getDirectoryHandle(part);
   const name = parts.at(-1)!;
-  const kind = directoryFileKind(name);
-  if (kind === "other") throw new Error("不支持打开此文件类型");
   const file = await (await directory.getFileHandle(name)).getFile();
+  return readDirectoryFileContent(file, path);
+}
+
+export async function readDirectoryFileContent(file: File, path: string): Promise<DirectoryFileContent> {
+  const kind = directoryFileKind(path);
+  if (kind === "other") throw new Error("不支持打开此文件类型");
   if (kind === "markdown") return { kind, path, text: await file.text() };
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const mimeType = IMAGE_MIME_TYPES[fileExtension(name)] || file.type || "application/octet-stream";
+  const mimeType = IMAGE_MIME_TYPES[fileExtension(path)] || file.type || "application/octet-stream";
   return { kind, path, dataUrl: `data:${mimeType};base64,${bytesToBase64(bytes)}` };
 }
 
@@ -152,8 +162,57 @@ function directoryHandleKey(tabId?: number): string {
   return tabId === undefined ? DIRECTORY_HANDLE_KEY : `tab:${tabId}`;
 }
 
+function fileHandleKey(tabId: number): string {
+  return `${FILE_HANDLE_KEY_PREFIX}${tabId}`;
+}
+
 function isDirectoryHandle(value: unknown): value is FileSystemDirectoryHandle {
-  return typeof value === "object" && value !== null && "kind" in value && value.kind === "directory";
+  return typeof value === "object"
+    && value !== null
+    && "kind" in value
+    && value.kind === "directory"
+    && "getDirectoryHandle" in value
+    && typeof value.getDirectoryHandle === "function";
+}
+
+function isFileHandle(value: unknown): value is FileSystemFileHandle {
+  return typeof value === "object"
+    && value !== null
+    && "kind" in value
+    && value.kind === "file"
+    && "getFile" in value
+    && typeof value.getFile === "function";
+}
+
+async function getStoredHandle(key: string): Promise<unknown> {
+  const database = await openDirectoryDatabase();
+  try {
+    return await requestValue(database.transaction(DIRECTORY_STORE_NAME).objectStore(DIRECTORY_STORE_NAME).get(key));
+  } finally {
+    database.close();
+  }
+}
+
+async function storeHandle(key: string, handle: FileSystemHandle): Promise<void> {
+  const database = await openDirectoryDatabase();
+  try {
+    const transaction = database.transaction(DIRECTORY_STORE_NAME, "readwrite");
+    transaction.objectStore(DIRECTORY_STORE_NAME).put(handle, key);
+    await transactionComplete(transaction);
+  } finally {
+    database.close();
+  }
+}
+
+async function deleteStoredHandle(key: string): Promise<void> {
+  const database = await openDirectoryDatabase();
+  try {
+    const transaction = database.transaction(DIRECTORY_STORE_NAME, "readwrite");
+    transaction.objectStore(DIRECTORY_STORE_NAME).delete(key);
+    await transactionComplete(transaction);
+  } finally {
+    database.close();
+  }
 }
 
 function openDirectoryDatabase(): Promise<IDBDatabase> {

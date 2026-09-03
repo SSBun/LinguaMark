@@ -9,8 +9,9 @@
     "setup:chrome": "playwright-core install chromium",
     "open:test-article": "npm run build && node scripts/open-test-article.mjs",
     "test": "node --test tests/annotations.test.ts",
+    "test:picker": "npm run build && node tests/file-picker.mjs && node tests/directory-picker.mjs",
     "test:chrome": "npm run build && node tests/chrome.mjs",
-    "verify": "npm run check && npm test && npm run test:chrome"
+    "verify": "npm run check && npm test && npm run test:picker && npm run test:chrome"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "^0.84.3",

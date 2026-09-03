@@ -8,7 +8,6 @@ await build({
   entryPoints: [
     "src/background.ts",
     "src/content.ts",
-    "src/directory-picker.ts",
     "src/markdown.ts",
     "src/options.ts",
     "src/popup.ts",

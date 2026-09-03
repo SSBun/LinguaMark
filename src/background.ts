@@ -11,6 +11,7 @@ import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completio
 import { logInfo, logWarn } from "./debug.ts";
 import {
   deleteStoredDirectoryHandle,
+  deleteStoredFileHandle,
   readDirectoryState,
   readStoredDirectoryFile,
   type DirectoryTreeEntry,
@@ -83,32 +84,6 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
   if (!isRecord(message)) return undefined;
-
-  if (message.type === "OPEN_DIRECTORY_PICKER" && sender.tab?.id !== undefined && isMarkdownViewerSender(sender)) {
-    const tabId = sender.tab.id;
-    const isolated = isStandaloneViewerSender(sender) ? "&isolated=1" : "";
-    void chrome.windows.create({
-      url: chrome.runtime.getURL(`directory-picker.html?tabId=${tabId}${isolated}`),
-      type: "popup",
-      width: 520,
-      height: 390,
-      focused: true,
-    }).then(() => sendResponse({ ok: true })).catch((error: unknown) => {
-      logWarn("directory", "picker.window.failed", { tabId, error });
-      sendResponse({ ok: false, error: errorMessage(error) });
-    });
-    return true;
-  }
-
-  if (message.type === "DIRECTORY_PICKER_COMPLETE"
-    && Number.isInteger(message.tabId)
-    && sender.url?.startsWith(chrome.runtime.getURL("directory-picker.html"))) {
-    const tabId = Number(message.tabId);
-    void chrome.tabs.sendMessage(tabId, { type: "DIRECTORY_STATE_CHANGED" })
-      .catch(() => undefined)
-      .then(() => sendResponse({ ok: true }));
-    return true;
-  }
 
   if (message.type === "GET_DIRECTORY_STATE" && isMarkdownViewerSender(sender)) {
     void readDirectoryState(isStandaloneViewerSender(sender) ? sender.tab?.id : undefined).then((state) => {
@@ -190,13 +165,51 @@ chrome.commands.onCommand.addListener((command, tab) => {
   void chrome.tabs.sendMessage(tab.id, { type: "SHOW_HOVERED_TRANSLATION" }).catch(() => undefined);
 });
 
+const reusingFileTabs = new Set<number>();
+
+chrome.tabs.onCreated.addListener((tab) => {
+  void reuseOpenFileTab(tab);
+});
+
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+  if (changeInfo.url) void reuseOpenFileTab(tab);
+});
+
 chrome.tabs.onRemoved.addListener((tabId) => {
+  reusingFileTabs.delete(tabId);
   const removed = analysisStates.delete(tabId);
   if (removed) logInfo("background", "analysis.session.removed", { tabId, reason: "tab-closed" });
-  void deleteStoredDirectoryHandle(tabId).catch((error: unknown) => {
+  void Promise.all([deleteStoredDirectoryHandle(tabId), deleteStoredFileHandle(tabId)]).catch((error: unknown) => {
     logWarn("directory", "viewer.state.cleanup-failed", { tabId, error });
   });
 });
+
+async function reuseOpenFileTab(openedTab: chrome.tabs.Tab): Promise<void> {
+  const openedTabId = openedTab.id;
+  const fileUrl = comparableMarkdownFileUrl(openedTab.pendingUrl || openedTab.url);
+  if (openedTabId === undefined || !fileUrl || reusingFileTabs.has(openedTabId)) return;
+
+  reusingFileTabs.add(openedTabId);
+  try {
+    const existingTab = (await chrome.tabs.query({}))
+      .filter((tab) => tab.id !== openedTabId && comparableMarkdownFileUrl(tab.pendingUrl || tab.url) === fileUrl)
+      .sort((left, right) => (right.lastAccessed ?? 0) - (left.lastAccessed ?? 0))[0];
+    if (existingTab?.id === undefined) return;
+
+    await chrome.tabs.update(existingTab.id, { active: true });
+    await chrome.windows.update(existingTab.windowId, { focused: true });
+    await chrome.tabs.remove(openedTabId);
+    await chrome.tabs.reload(existingTab.id);
+    logInfo("background", "markdown.file-tab.reused", { tabId: existingTab.id });
+  } catch (error: unknown) {
+    logWarn("background", "markdown.file-tab.reuse-failed", {
+      tabId: openedTabId,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+  } finally {
+    reusingFileTabs.delete(openedTabId);
+  }
+}
 
 async function initializeDisplaySettings(): Promise<void> {
   const stored = await chrome.storage.local.get(DISPLAY_KEY);
@@ -930,6 +943,19 @@ function endpointOrigin(baseUrl: string): string {
     return new URL(baseUrl).origin;
   } catch {
     return "invalid-url";
+  }
+}
+
+function comparableMarkdownFileUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "file:" || !/\.md$/iu.test(url.pathname)) return undefined;
+    url.hash = "";
+    url.search = "";
+    return url.href;
+  } catch {
+    return undefined;
   }
 }
 

@@ -41,7 +41,6 @@ interface FilePickerAcceptType {
 
 interface OpenFilePickerOptions {
   excludeAcceptAllOption?: boolean;
-  id?: string;
   multiple?: boolean;
   startIn?: FileSystemHandle | WellKnownDirectory;
   types?: FilePickerAcceptType[];

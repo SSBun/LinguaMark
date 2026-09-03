@@ -9,7 +9,16 @@ import texmath from "markdown-it-texmath";
 import mermaid from "mermaid";
 import { logInfo, logWarn } from "./debug.ts";
 import {
+  deleteStoredDirectoryHandle,
+  deleteStoredFileHandle,
   directoryFileKind,
+  getStoredFileHandle,
+  parseDirectoryPath,
+  readDirectoryFileContent,
+  readDirectoryHandleFile,
+  readDirectoryHandleState,
+  storeDirectoryHandle,
+  storeFileHandle,
   type DirectoryBrowserState,
   type DirectoryFileContent,
   type DirectoryFileKind,
@@ -19,7 +28,11 @@ import {
 const MARKDOWN_PATH = /\.md$/iu;
 const VIEWER_FAVORITES_KEY = "markdownViewerFavorites";
 const VIEWER_RECENTS_KEY = "markdownViewerRecents";
+const VIEWER_RELOAD_ANIMATION_KEY = "markdownViewerReloadAnimation";
+const VIEWER_DIRECT_DIRECTORY_KEY = "markdownViewerDirectDirectory";
 const MAX_VIEWER_RECENTS = 5;
+const HAN_CHARACTER_PATTERN = /\p{Script=Han}/gu;
+const ENGLISH_WORD_PATTERN = /\p{Script=Latin}+(?:['’-]\p{Script=Latin}+)*/gu;
 const ALERT_LABELS = {
   note: "Note",
   tip: "Tip",
@@ -29,6 +42,7 @@ const ALERT_LABELS = {
 } as const;
 
 type ViewerItemKind = "directory" | "file";
+type SidebarView = "files" | "outline";
 
 interface ViewerItem {
   kind: ViewerItemKind;
@@ -48,6 +62,7 @@ interface ViewerElements {
   fileName: HTMLElement;
   openFileButton?: HTMLButtonElement;
   openDirectoryButton: HTMLButtonElement;
+  directoryInput?: HTMLInputElement;
   favoriteButton: HTMLButtonElement;
   favoriteIcon: HTMLElement;
   favoriteLabel: HTMLElement;
@@ -57,15 +72,26 @@ interface ViewerElements {
   recentList: HTMLUListElement;
   currentItem?: ViewerItem;
   directoryRootName?: string;
-  documentSidebar?: HTMLElement;
-  setSidebar: (sidebar: HTMLElement | undefined, label: string) => void;
+  directoryHandle?: FileSystemDirectoryHandle;
+  directoryFiles?: Map<string, File>;
+  directoryFileState?: DirectoryBrowserState;
+  directoryTabId?: number;
+  directDirectorySession?: boolean;
+  pendingDirectoryItem?: ViewerItem;
+  setSidebar: (view: SidebarView, sidebar: HTMLElement | undefined, activate?: boolean) => void;
   openSidebar: () => void;
   setPath: (path: string) => void;
+  setContentCount: (source: string) => void;
 }
 
 interface ResolvedDirectoryReference {
   path: string;
   hash?: string;
+}
+
+interface DirectoryFileSelection {
+  state: DirectoryBrowserState;
+  files: Map<string, File>;
 }
 
 let diagramRenderSequence = 0;
@@ -75,6 +101,7 @@ let viewerFavorites: ViewerItem[] = [];
 let viewerRecents: ViewerItem[] = [];
 let viewerLibraryReady: Promise<void> | undefined;
 let viewerLibraryLoaded = false;
+let reloadScrollAnimationEnabled = false;
 let closeDirectoryContextMenu: ((restoreFocus?: boolean) => void) | undefined;
 const directoryImageCache = new Map<string, string>();
 
@@ -95,8 +122,23 @@ const markdown = new MarkdownIt({
   });
 
 const standaloneViewerUrl = chrome.runtime.getURL("viewer.html");
+try {
+  setReloadScrollAnimation(sessionStorage.getItem(VIEWER_RELOAD_ANIMATION_KEY) === "true");
+} catch (error: unknown) {
+  logWarn("content", "markdown.reload-animation.load.failed", { errorName: errorName(error) });
+}
 if (location.protocol === "file:" && MARKDOWN_PATH.test(location.pathname)) renderLocalMarkdown();
 else if (location.href.split("#", 1)[0] === standaloneViewerUrl) renderStandaloneViewer();
+
+function setReloadScrollAnimation(enabled: boolean): void {
+  reloadScrollAnimationEnabled = enabled;
+  document.documentElement.classList.toggle("linguamark-reload-scroll-animation", enabled);
+}
+
+function contentCount(source: string): number {
+  return (source.match(HAN_CHARACTER_PATTERN)?.length ?? 0)
+    + (source.match(ENGLISH_WORD_PATTERN)?.length ?? 0);
+}
 
 function renderLocalMarkdown(): void {
   const source = readRawMarkdown();
@@ -105,6 +147,7 @@ function renderLocalMarkdown(): void {
     appendKatexStyle();
     document.body.classList.add("linguamark-markdown-page");
     const viewer = createViewer(article, false, { kind: "file", path: localMarkdownPath() });
+    viewer.setContentCount(source);
     document.body.replaceChildren(viewer.toolbar, viewer.shell, viewer.libraryDialog);
     replaceCustomStyle(customCss);
     document.documentElement.dataset.linguamarkMarkdown = "ready";
@@ -390,17 +433,25 @@ function createViewer(article: HTMLElement, standalone = false, initialItem?: Vi
   toolbar.className = "linguamark-markdown-toolbar";
   toolbar.dataset.linguamarkUi = "";
 
-  const toggle = document.createElement("button");
-  toggle.type = "button";
-  toggle.className = "linguamark-markdown-toc-toggle";
-  toggle.setAttribute("aria-controls", "linguamark-markdown-toc");
-  const toggleIcon = document.createElement("span");
-  toggleIcon.className = "linguamark-markdown-toc-icon";
-  toggleIcon.setAttribute("aria-hidden", "true");
-  toggleIcon.textContent = "☰";
-  const toggleLabel = document.createElement("span");
-  toggleLabel.textContent = "目录";
-  toggle.append(toggleIcon, toggleLabel);
+  const sidebarControl = document.createElement("label");
+  sidebarControl.className = "linguamark-markdown-toc-toggle";
+  const sidebarIcon = document.createElement("span");
+  sidebarIcon.className = "linguamark-markdown-toc-icon";
+  sidebarIcon.setAttribute("aria-hidden", "true");
+  sidebarIcon.textContent = "☰";
+  const sidebarSelect = document.createElement("select");
+  sidebarSelect.className = "linguamark-markdown-sidebar-select";
+  sidebarSelect.setAttribute("aria-controls", "linguamark-markdown-toc");
+  sidebarSelect.setAttribute("aria-label", "侧栏显示内容");
+  const filesOption = new Option("文件树", "files");
+  const outlineOption = new Option("文章目录", "outline");
+  const hiddenOption = new Option("隐藏侧栏", "hidden");
+  sidebarSelect.append(filesOption, outlineOption, hiddenOption);
+  const sidebarIndicator = document.createElement("span");
+  sidebarIndicator.className = "linguamark-markdown-sidebar-indicator";
+  sidebarIndicator.setAttribute("aria-hidden", "true");
+  sidebarIndicator.textContent = "▾";
+  sidebarControl.append(sidebarIcon, sidebarSelect, sidebarIndicator);
 
   const openFileButton = standalone ? document.createElement("button") : undefined;
   if (openFileButton) {
@@ -412,6 +463,14 @@ function createViewer(article: HTMLElement, standalone = false, initialItem?: Vi
   openDirectoryButton.type = "button";
   openDirectoryButton.className = "linguamark-markdown-directory-button";
   openDirectoryButton.textContent = "打开目录";
+  const directoryInput = standalone ? undefined : document.createElement("input");
+  if (directoryInput) {
+    directoryInput.type = "file";
+    directoryInput.multiple = true;
+    directoryInput.webkitdirectory = true;
+    directoryInput.hidden = true;
+    directoryInput.dataset.linguamarkUi = "";
+  }
 
   const fileName = document.createElement("span");
   fileName.className = "linguamark-markdown-file-name";
@@ -441,6 +500,35 @@ function createViewer(article: HTMLElement, standalone = false, initialItem?: Vi
     setFullWidth(!document.body.classList.contains("linguamark-full-width"));
   });
   setFullWidth(false);
+
+  const animationButton = document.createElement("button");
+  animationButton.type = "button";
+  animationButton.className = "linguamark-markdown-directory-button linguamark-markdown-animation-button";
+  animationButton.setAttribute("role", "switch");
+  const animationIcon = document.createElement("span");
+  animationIcon.className = "linguamark-markdown-action-icon";
+  animationIcon.setAttribute("aria-hidden", "true");
+  animationIcon.textContent = "↝";
+  const animationLabel = document.createElement("span");
+  animationLabel.className = "linguamark-markdown-action-label";
+  animationLabel.textContent = "重载动画";
+  animationButton.append(animationIcon, animationLabel);
+  const updateAnimationButton = (enabled: boolean): void => {
+    setReloadScrollAnimation(enabled);
+    animationButton.setAttribute("aria-checked", String(enabled));
+    animationButton.setAttribute("aria-label", `${enabled ? "关闭" : "开启"}重载滚动动画`);
+    animationButton.title = `${enabled ? "关闭" : "开启"}重载时的平滑滚动动画`;
+  };
+  animationButton.addEventListener("click", () => {
+    const enabled = !reloadScrollAnimationEnabled;
+    updateAnimationButton(enabled);
+    try {
+      sessionStorage.setItem(VIEWER_RELOAD_ANIMATION_KEY, String(enabled));
+    } catch (error: unknown) {
+      logWarn("content", "markdown.reload-animation.save.failed", { errorName: errorName(error) });
+    }
+  });
+  updateAnimationButton(reloadScrollAnimationEnabled);
 
   const favoriteButton = document.createElement("button");
   favoriteButton.type = "button";
@@ -476,8 +564,15 @@ function createViewer(article: HTMLElement, standalone = false, initialItem?: Vi
   brand.textContent = "LinguaMark";
   const actions = document.createElement("div");
   actions.className = "linguamark-markdown-toolbar-actions";
-  actions.append(brand, widthButton, favoriteButton, libraryButton);
-  toolbar.append(toggle, ...(openFileButton ? [openFileButton] : []), openDirectoryButton, fileName, actions);
+  actions.append(brand, widthButton, animationButton, favoriteButton, libraryButton);
+  toolbar.append(
+    sidebarControl,
+    ...(openFileButton ? [openFileButton] : []),
+    openDirectoryButton,
+    ...(directoryInput ? [directoryInput] : []),
+    fileName,
+    actions,
+  );
 
   const shell = document.createElement("div");
   shell.className = "linguamark-markdown-shell";
@@ -498,15 +593,35 @@ function createViewer(article: HTMLElement, standalone = false, initialItem?: Vi
   backdrop.className = "linguamark-markdown-toc-backdrop";
   backdrop.dataset.linguamarkUi = "";
   backdrop.setAttribute("aria-label", "关闭侧栏");
+
+  const characterCountLabel = document.createElement("output");
+  characterCountLabel.className = "linguamark-markdown-character-count";
+  characterCountLabel.dataset.linguamarkUi = "";
+  characterCountLabel.setAttribute("aria-live", "polite");
+  const setContentCount = (source: string): void => {
+    const formatted = contentCount(source).toLocaleString("zh-CN");
+    characterCountLabel.textContent = `${formatted} 字词`;
+    characterCountLabel.setAttribute("aria-label", `当前内容共 ${formatted} 字词`);
+  };
+  setContentCount("");
+
   const library = createViewerLibrary();
-  shell.append(content, resizer, backdrop);
+  shell.append(content, resizer, backdrop, characterCountLabel);
 
   const narrowScreen = matchMedia("(max-width: 900px)");
   const minimumSidebarWidth = 200;
   const defaultSidebarWidth = 272;
+  const sidebars: Record<SidebarView, HTMLElement | undefined> = {
+    files: undefined,
+    outline: documentSidebar,
+  };
+  const sidebarLabels: Record<SidebarView, string> = {
+    files: "文件树",
+    outline: "文章目录",
+  };
   let activeSidebar: HTMLElement | undefined;
+  let sidebarView: SidebarView = "outline";
   let sidebarOpen = false;
-  let sidebarLabel = "目录";
   let sidebarWidth = defaultSidebarWidth;
   let sidebarResizePointer: number | undefined;
   const maximumSidebarWidth = (): number => Math.max(defaultSidebarWidth, Math.floor(innerWidth / 2));
@@ -518,28 +633,38 @@ function createViewer(article: HTMLElement, standalone = false, initialItem?: Vi
     resizer.setAttribute("aria-valuenow", String(sidebarWidth));
     resizer.setAttribute("aria-valuetext", `${sidebarWidth} 像素`);
   };
+  const syncSidebar = (): void => {
+    const nextSidebar = sidebars[sidebarView];
+    if (activeSidebar !== nextSidebar) {
+      activeSidebar?.remove();
+      activeSidebar = nextSidebar;
+      if (activeSidebar) {
+        shell.insertBefore(activeSidebar, content);
+        shell.insertBefore(resizer, content);
+      }
+    }
+    filesOption.disabled = !sidebars.files;
+    outlineOption.disabled = !sidebars.outline;
+    sidebarControl.hidden = !sidebars.files && !sidebars.outline;
+    resizer.setAttribute("aria-label", `调整${sidebarLabels[sidebarView]}宽度`);
+    shell.classList.toggle("has-no-toc", !activeSidebar);
+  };
   const setSidebarOpen = (open: boolean): void => {
     sidebarOpen = Boolean(activeSidebar) && open;
     document.body.classList.toggle("linguamark-toc-open", sidebarOpen);
-    toggle.setAttribute("aria-expanded", String(sidebarOpen));
-    toggle.setAttribute("aria-label", `${sidebarOpen ? "隐藏" : "显示"}${sidebarLabel}`);
-    toggle.title = `${sidebarOpen ? "隐藏" : "显示"}${sidebarLabel}`;
+    sidebarControl.classList.toggle("is-open", sidebarOpen);
+    sidebarControl.title = sidebarOpen ? `当前显示${sidebarLabels[sidebarView]}` : "选择侧栏内容";
+    sidebarSelect.value = sidebarOpen ? sidebarView : "hidden";
     resizer.tabIndex = sidebarOpen && !narrowScreen.matches ? 0 : -1;
     backdrop.hidden = !sidebarOpen;
   };
-  const setSidebar = (sidebar: HTMLElement | undefined, label: string): void => {
-    activeSidebar?.remove();
-    activeSidebar = sidebar;
-    sidebarLabel = label;
-    toggleLabel.textContent = label;
-    toggle.hidden = !sidebar;
-    resizer.setAttribute("aria-label", `调整${label}宽度`);
-    shell.classList.toggle("has-no-toc", !sidebar);
-    if (sidebar) {
-      shell.insertBefore(sidebar, content);
-      shell.insertBefore(resizer, content);
-    }
-    setSidebarOpen(Boolean(sidebar) && !narrowScreen.matches);
+  const setSidebar = (view: SidebarView, sidebar: HTMLElement | undefined, activate = false): void => {
+    const wasOpen = sidebarOpen;
+    sidebars[view] = sidebar;
+    if (activate && sidebar) sidebarView = view;
+    if (!sidebars[sidebarView]) sidebarView = sidebars.files ? "files" : "outline";
+    syncSidebar();
+    setSidebarOpen(activate ? !narrowScreen.matches : wasOpen);
   };
 
   resizer.addEventListener("pointerdown", (event) => {
@@ -575,7 +700,17 @@ function createViewer(article: HTMLElement, standalone = false, initialItem?: Vi
     event.preventDefault();
     setSidebarWidth(width);
   });
-  toggle.addEventListener("click", () => setSidebarOpen(!sidebarOpen));
+  sidebarSelect.addEventListener("change", () => {
+    const view = sidebarSelect.value;
+    if (view === "hidden") {
+      setSidebarOpen(false);
+      return;
+    }
+    if ((view !== "files" && view !== "outline") || !sidebars[view]) return;
+    sidebarView = view;
+    syncSidebar();
+    setSidebarOpen(true);
+  });
   backdrop.addEventListener("click", () => setSidebarOpen(false));
   shell.addEventListener("click", (event) => {
     if (narrowScreen.matches
@@ -592,7 +727,7 @@ function createViewer(article: HTMLElement, standalone = false, initialItem?: Vi
     if (event.key === "Escape" && sidebarOpen) setSidebarOpen(false);
   });
   setSidebarWidth(defaultSidebarWidth);
-  setSidebar(documentSidebar, "目录");
+  setSidebar("outline", documentSidebar, true);
 
   return {
     toolbar,
@@ -601,6 +736,7 @@ function createViewer(article: HTMLElement, standalone = false, initialItem?: Vi
     fileName,
     ...(openFileButton ? { openFileButton } : {}),
     openDirectoryButton,
+    ...(directoryInput ? { directoryInput } : {}),
     favoriteButton,
     favoriteIcon,
     favoriteLabel,
@@ -609,7 +745,6 @@ function createViewer(article: HTMLElement, standalone = false, initialItem?: Vi
     favoriteList: library.favoriteList,
     recentList: library.recentList,
     ...(initialItem ? { currentItem: initialItem } : {}),
-    documentSidebar,
     setSidebar,
     openSidebar() {
       setSidebarOpen(true);
@@ -618,6 +753,7 @@ function createViewer(article: HTMLElement, standalone = false, initialItem?: Vi
       fileName.textContent = path;
       fileName.title = path;
     },
+    setContentCount,
   };
 }
 
@@ -818,12 +954,12 @@ async function openViewerItem(item: ViewerItem, viewer: ViewerElements): Promise
   viewer.libraryDialog.close();
   if (item.kind === "directory") {
     if (viewer.directoryRootName !== item.path) {
-      showDirectoryNotice(`请重新选择或授权目录“${item.path}”后再打开`);
+      requestViewerDirectoryAccess(item, viewer);
       return;
     }
     await refreshDirectoryBrowser(viewer, true);
     if (viewer.directoryRootName !== item.path) {
-      showDirectoryNotice(`请重新选择或授权目录“${item.path}”后再打开`);
+      requestViewerDirectoryAccess(item, viewer);
       return;
     }
     viewer.openSidebar();
@@ -854,10 +990,22 @@ async function openViewerItem(item: ViewerItem, viewer: ViewerElements): Promise
     return;
   }
 
-  const directoryName = item.path.includes("/") ? item.path.split("/", 1)[0] : undefined;
-  showDirectoryNotice(directoryName
-    ? `请重新选择或授权目录“${directoryName}”后再打开此文件`
-    : `请重新选择文件“${item.path}”后再打开`);
+  if (viewerItemDirectoryName(item)) {
+    requestViewerDirectoryAccess(item, viewer);
+    return;
+  }
+  showDirectoryNotice(`请重新选择文件“${item.path}”后再打开`);
+}
+
+function requestViewerDirectoryAccess(item: ViewerItem, viewer: ViewerElements): void {
+  void openDirectoryPicker(viewer, item);
+}
+
+function viewerItemDirectoryName(item: ViewerItem): string | undefined {
+  if (item.kind === "directory") return item.path;
+  if (item.path.startsWith("/")) return undefined;
+  const separator = item.path.indexOf("/");
+  return separator > 0 ? item.path.slice(0, separator) : undefined;
 }
 
 function readViewerItems(value: unknown, limit = Number.POSITIVE_INFINITY): ViewerItem[] {
@@ -972,35 +1120,91 @@ function createTableOfContents(article: HTMLElement): HTMLElement | undefined {
 function initializeStandaloneFilePicker(viewer: ViewerElements): void {
   const button = viewer.openFileButton;
   if (!button) return;
-  if (typeof window.showOpenFilePicker !== "function") {
-    button.disabled = true;
-    button.title = "当前 Chrome 不支持文件选择";
-    return;
-  }
   button.addEventListener("click", () => {
-    void chooseStandaloneMarkdownFile(viewer, button);
+    void chooseStandaloneMarkdownFile(viewer);
   });
 }
 
-async function chooseStandaloneMarkdownFile(viewer: ViewerElements, button: HTMLButtonElement): Promise<void> {
-  button.disabled = true;
+async function chooseStandaloneMarkdownFile(viewer: ViewerElements): Promise<void> {
+  logInfo("content", "markdown.file-picker.requested");
+  let handle: FileSystemFileHandle | undefined;
   try {
-    const [handle] = await window.showOpenFilePicker({
-      id: "linguamark-markdown-file",
+    [handle] = await window.showOpenFilePicker({
+      startIn: "downloads",
       multiple: false,
       excludeAcceptAllOption: true,
       types: [{ description: "Markdown", accept: { "text/markdown": [".md"] } }],
     });
-    if (!handle) return;
+  } catch (error: unknown) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      logInfo("content", "markdown.file-picker.cancelled");
+      return;
+    }
+    logWarn("content", "markdown.file-picker.request.failed", { errorName: errorName(error) });
+    showDirectoryNotice("无法打开系统文件选择器");
+    return;
+  }
+  if (!handle) {
+    logInfo("content", "markdown.file-picker.cancelled");
+    return;
+  }
+
+  logInfo("content", "markdown.file-picker.selected");
+  if (await reuseStandaloneFileTab(handle, viewer)) return;
+  await rememberStandaloneFileHandle(handle, viewer);
+  await openStandaloneMarkdownFile(handle, viewer);
+}
+
+async function reuseStandaloneFileTab(handle: FileSystemFileHandle, viewer: ViewerElements): Promise<boolean> {
+  try {
+    const currentTab = await chrome.tabs.getCurrent();
+    if (currentTab?.id === undefined) return false;
+    viewer.directoryTabId = currentTab.id;
+
+    const tabs = (await chrome.tabs.query({}))
+      .filter((tab) => tab.id !== currentTab.id && tab.url?.split("#", 1)[0] === standaloneViewerUrl)
+      .sort((left, right) => (right.lastAccessed ?? 0) - (left.lastAccessed ?? 0));
+    for (const tab of tabs) {
+      if (tab.id === undefined) continue;
+      const existingHandle = await getStoredFileHandle(tab.id);
+      if (!existingHandle || !(await handle.isSameEntry(existingHandle))) continue;
+
+      await chrome.tabs.update(tab.id, { active: true });
+      await chrome.windows.update(tab.windowId, { focused: true });
+      await chrome.tabs.reload(tab.id);
+      if (!viewer.currentItem) await chrome.tabs.remove(currentTab.id);
+      logInfo("content", "markdown.file-picker.reused", { tabId: tab.id });
+      return true;
+    }
+  } catch (error: unknown) {
+    logWarn("content", "markdown.file-picker.reuse.failed", { errorName: errorName(error) });
+  }
+  return false;
+}
+
+async function rememberStandaloneFileHandle(handle: FileSystemFileHandle, viewer: ViewerElements): Promise<void> {
+  const tabId = viewer.directoryTabId ?? (await chrome.tabs.getCurrent())?.id;
+  if (tabId === undefined) return;
+  viewer.directoryTabId = tabId;
+  try {
+    await deleteStoredDirectoryHandle(tabId);
+    await storeFileHandle(handle, tabId);
+  } catch (error: unknown) {
+    logWarn("content", "markdown.file-picker.persist.failed", { errorName: errorName(error) });
+  }
+}
+
+async function openStandaloneMarkdownFile(handle: FileSystemFileHandle, viewer: ViewerElements): Promise<boolean> {
+  try {
     const file = await handle.getFile();
     if (!MARKDOWN_PATH.test(file.name)) throw new Error("请选择 Markdown 文件");
     renderStandaloneMarkdown(await file.text(), file.name, viewer);
+    logInfo("content", "markdown.file-picker.opened");
+    return true;
   } catch (error: unknown) {
-    if (!(error instanceof DOMException && error.name === "AbortError")) {
-      showDirectoryNotice(error instanceof Error ? error.message : "无法打开 Markdown 文件");
-    }
-  } finally {
-    button.disabled = false;
+    logWarn("content", "markdown.file-picker.open.failed", { errorName: errorName(error) });
+    showDirectoryNotice(error instanceof Error ? error.message : "无法打开 Markdown 文件");
+    return false;
   }
 }
 
@@ -1010,7 +1214,8 @@ function renderStandaloneMarkdown(source: string, name: string, viewer: ViewerEl
   directoryRenderSequence += 1;
   disableStandaloneRelativeResources(article);
   viewer.content.replaceChildren(article);
-  viewer.setSidebar(sidebar, "目录");
+  viewer.setContentCount(source);
+  viewer.setSidebar("outline", sidebar, true);
   viewer.setPath(name);
   setViewerCurrentItem(viewer, { kind: "file", path: name });
   viewer.openDirectoryButton.textContent = "打开目录";
@@ -1042,40 +1247,194 @@ function disableStandaloneRelativeResources(article: HTMLElement): void {
 }
 
 async function initializeDirectoryBrowser(viewer: ViewerElements): Promise<void> {
+  let storedFileHandle: FileSystemFileHandle | undefined;
+  if (viewer.openFileButton) {
+    const tab = await chrome.tabs.getCurrent();
+    if (tab?.id === undefined) {
+      showDirectoryNotice("无法识别当前阅读器标签页");
+      return;
+    }
+    viewer.directoryTabId = tab.id;
+    try {
+      storedFileHandle = await getStoredFileHandle(tab.id);
+    } catch (error: unknown) {
+      logWarn("content", "markdown.file-picker.restore.failed", { errorName: errorName(error) });
+    }
+  } else {
+    try {
+      viewer.directDirectorySession = sessionStorage.getItem(VIEWER_DIRECT_DIRECTORY_KEY) === "true";
+    } catch (error: unknown) {
+      logWarn("directory", "viewer.session.load.failed", { errorName: errorName(error) });
+    }
+  }
+  viewer.directoryInput?.addEventListener("cancel", () => {
+    viewer.pendingDirectoryItem = undefined;
+    logInfo("directory", "viewer.picker.cancelled");
+  });
+  viewer.directoryInput?.addEventListener("change", () => {
+    void selectDirectoryFiles(viewer);
+  });
   viewer.openDirectoryButton.addEventListener("click", () => {
     void openDirectoryPicker(viewer);
   });
-  chrome.runtime.onMessage.addListener((message: unknown) => {
-    if (isRecord(message) && message.type === "DIRECTORY_STATE_CHANGED") {
-      void refreshDirectoryBrowser(viewer, true);
-    }
-  });
+  if (storedFileHandle && await openStandaloneMarkdownFile(storedFileHandle, viewer)) return;
   await refreshDirectoryBrowser(viewer);
 }
 
-async function openDirectoryPicker(viewer: ViewerElements): Promise<void> {
-  viewer.openDirectoryButton.disabled = true;
+async function openDirectoryPicker(viewer: ViewerElements, pendingItem?: ViewerItem): Promise<void> {
+  viewer.pendingDirectoryItem = pendingItem;
+  logInfo("directory", "viewer.picker.requested");
+  if (viewer.directoryInput) {
+    viewer.directoryInput.value = "";
+    viewer.directoryInput.click();
+    return;
+  }
+
   try {
-    const response: unknown = await chrome.runtime.sendMessage({ type: "OPEN_DIRECTORY_PICKER" });
-    if (!isRecord(response) || response.ok !== true) {
-      throw new Error(isRecord(response) && typeof response.error === "string" ? response.error : "无法打开目录授权窗口");
+    const handle = await window.showDirectoryPicker({ startIn: "downloads", mode: "read" });
+    viewer.directoryHandle = handle;
+    logInfo("directory", "viewer.picker.selected");
+    if (viewer.openFileButton) {
+      try {
+        const tabId = viewer.directoryTabId ?? (await chrome.tabs.getCurrent())?.id;
+        if (tabId === undefined) throw new Error("无法识别当前阅读器标签页");
+        viewer.directoryTabId = tabId;
+        await deleteStoredFileHandle(tabId);
+        await storeDirectoryHandle(handle, tabId);
+      } catch (error: unknown) {
+        logWarn("directory", "viewer.picker.persist.failed", { errorName: errorName(error) });
+      }
+    } else {
+      viewer.directDirectorySession = true;
+      try {
+        sessionStorage.setItem(VIEWER_DIRECT_DIRECTORY_KEY, "true");
+      } catch (error: unknown) {
+        logWarn("directory", "viewer.session.save.failed", { errorName: errorName(error) });
+      }
     }
+    await handleDirectoryStateChanged(viewer);
   } catch (error: unknown) {
-    showDirectoryNotice(error instanceof Error ? error.message : "无法打开目录授权窗口");
-  } finally {
-    viewer.openDirectoryButton.disabled = false;
+    if (viewer.pendingDirectoryItem === pendingItem) viewer.pendingDirectoryItem = undefined;
+    if (error instanceof DOMException && error.name === "AbortError") {
+      logInfo("directory", "viewer.picker.cancelled");
+      return;
+    }
+    logWarn("directory", "viewer.picker.failed", { errorName: errorName(error) });
+    showDirectoryNotice(error instanceof Error ? error.message : "无法打开系统目录选择器");
   }
 }
 
-async function refreshDirectoryBrowser(viewer: ViewerElements, resetCurrent = false): Promise<void> {
-  viewer.openDirectoryButton.disabled = true;
-  try {
-    const response: unknown = await chrome.runtime.sendMessage({ type: "GET_DIRECTORY_STATE" });
-    if (!isRecord(response) || response.ok !== true || !isDirectoryBrowserState(response.state)) {
-      throw new Error(isRecord(response) && typeof response.error === "string" ? response.error : "无法读取目录状态");
-    }
+async function selectDirectoryFiles(viewer: ViewerElements): Promise<void> {
+  const input = viewer.directoryInput;
+  const files = input ? [...(input.files ?? [])] : [];
+  if (input) input.value = "";
+  if (files.length === 0) {
+    viewer.pendingDirectoryItem = undefined;
+    logInfo("directory", "viewer.picker.cancelled");
+    return;
+  }
 
-    const state = response.state;
+  try {
+    const selection = createDirectoryFileSelection(files);
+    viewer.directoryHandle = undefined;
+    viewer.directoryFiles = selection.files;
+    viewer.directoryFileState = selection.state;
+    viewer.directDirectorySession = true;
+    try {
+      sessionStorage.setItem(VIEWER_DIRECT_DIRECTORY_KEY, "true");
+    } catch (error: unknown) {
+      logWarn("directory", "viewer.session.save.failed", { errorName: errorName(error) });
+    }
+    logInfo("directory", "viewer.picker.selected");
+    await handleDirectoryStateChanged(viewer);
+  } catch (error: unknown) {
+    viewer.pendingDirectoryItem = undefined;
+    logWarn("directory", "viewer.picker.failed", { errorName: errorName(error) });
+    showDirectoryNotice(error instanceof Error ? error.message : "无法读取所选目录");
+  }
+}
+
+async function handleDirectoryStateChanged(viewer: ViewerElements): Promise<void> {
+  const pendingItem = viewer.pendingDirectoryItem;
+  viewer.pendingDirectoryItem = undefined;
+  await refreshDirectoryBrowser(viewer, true);
+  if (!pendingItem) return;
+
+  const expectedDirectory = viewerItemDirectoryName(pendingItem);
+  if (!expectedDirectory || viewer.directoryRootName !== expectedDirectory) {
+    showDirectoryNotice(`目标位于目录“${expectedDirectory ?? pendingItem.path}”，请授权该目录后重试`);
+    return;
+  }
+  await openViewerItem(pendingItem, viewer);
+}
+
+async function readViewerDirectoryState(viewer: ViewerElements): Promise<DirectoryBrowserState> {
+  if (viewer.directoryFileState) return viewer.directoryFileState;
+  if (viewer.directoryHandle) return readDirectoryHandleState(viewer.directoryHandle);
+  if (viewer.directDirectorySession) return { status: "none" };
+  const response: unknown = await chrome.runtime.sendMessage({ type: "GET_DIRECTORY_STATE" });
+  if (!isRecord(response) || response.ok !== true || !isDirectoryBrowserState(response.state)) {
+    throw new Error(isRecord(response) && typeof response.error === "string" ? response.error : "无法读取目录状态");
+  }
+  return response.state;
+}
+
+function createDirectoryFileSelection(selectedFiles: File[]): DirectoryFileSelection {
+  const files = new Map<string, File>();
+  const directories = new Map<string, DirectoryTreeEntry>();
+  const entries: DirectoryTreeEntry[] = [];
+  let rootName: string | undefined;
+
+  for (const file of selectedFiles) {
+    const parts = file.webkitRelativePath.split("/");
+    const nextRoot = parts.shift();
+    const path = parts.join("/");
+    if (!nextRoot || parts.length === 0 || !parseDirectoryPath(path)) throw new Error("目录文件路径无效");
+    if (rootName && rootName !== nextRoot) throw new Error("请选择单个目录");
+    rootName = nextRoot;
+    files.set(path, file);
+
+    let children = entries;
+    let parentPath = "";
+    for (const name of parts.slice(0, -1)) {
+      const directoryPath = parentPath ? `${parentPath}/${name}` : name;
+      let directory = directories.get(directoryPath);
+      if (!directory) {
+        directory = { name, path: directoryPath, type: "directory", children: [] };
+        directories.set(directoryPath, directory);
+        children.push(directory);
+      }
+      children = directory.children!;
+      parentPath = directoryPath;
+    }
+    children.push({
+      name: parts.at(-1)!,
+      path,
+      type: "file",
+      fileKind: directoryFileKind(path),
+    });
+  }
+
+  if (!rootName) throw new Error("所选目录为空");
+  sortDirectoryEntries(entries);
+  return { state: { status: "granted", rootName, entries }, files };
+}
+
+function sortDirectoryEntries(entries: DirectoryTreeEntry[]): void {
+  for (const entry of entries) {
+    if (entry.type === "directory" && entry.children) sortDirectoryEntries(entry.children);
+  }
+  entries.sort((left, right) => {
+    if (left.type !== right.type) return left.type === "directory" ? -1 : 1;
+    return left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: "base" });
+  });
+}
+
+async function refreshDirectoryBrowser(viewer: ViewerElements, resetCurrent = false): Promise<void> {
+  const button = viewer.openDirectoryButton;
+  button.disabled = true;
+  try {
+    const state = await readViewerDirectoryState(viewer);
     directoryImageCache.clear();
     if (state.status === "granted") {
       viewer.directoryRootName = state.rootName;
@@ -1083,9 +1442,9 @@ async function refreshDirectoryBrowser(viewer: ViewerElements, resetCurrent = fa
         viewer.setPath(state.rootName);
         setViewerCurrentItem(viewer, { kind: "directory", path: state.rootName });
       }
-      viewer.openDirectoryButton.textContent = "更换目录";
+      button.textContent = "更换目录";
       const sidebar = createDirectorySidebar(state, viewer);
-      viewer.setSidebar(sidebar, "文件");
+      viewer.setSidebar("files", sidebar, true);
       setActiveDirectoryPath(currentDirectoryPath(viewer, sidebar));
       updateViewerFavoriteButton(viewer);
       renderViewerLibrary(viewer);
@@ -1094,14 +1453,14 @@ async function refreshDirectoryBrowser(viewer: ViewerElements, resetCurrent = fa
     }
 
     viewer.directoryRootName = undefined;
-    viewer.setSidebar(viewer.documentSidebar, "目录");
-    viewer.openDirectoryButton.textContent = state.status === "none" ? "打开目录" : "重新授权";
+    viewer.setSidebar("files", undefined);
+    button.textContent = state.status === "none" ? "打开目录" : "重新授权";
   } catch (error: unknown) {
     viewer.directoryRootName = undefined;
     logWarn("directory", "viewer.state.failed", { errorName: errorName(error) });
     showDirectoryNotice(error instanceof Error ? error.message : "无法读取目录状态");
   } finally {
-    viewer.openDirectoryButton.disabled = false;
+    button.disabled = false;
   }
 }
 
@@ -1168,13 +1527,8 @@ function createDirectorySidebar(state: DirectoryBrowserState, viewer: ViewerElem
   focusButton.title = "在文件列表中定位当前打开的文件";
   focusButton.disabled = true;
   focusButton.addEventListener("click", () => {
-    const current = tree.querySelector<HTMLButtonElement>(".linguamark-directory-file.is-active");
-    if (!current) return;
-    for (let folder = current.closest("details"); folder && tree.contains(folder); folder = folder.parentElement?.closest("details") ?? null) {
-      folder.open = true;
-    }
-    current.scrollIntoView({ block: "center", inline: "nearest" });
-    current.focus({ preventScroll: true });
+    const path = tree.querySelector<HTMLButtonElement>(".linguamark-directory-file.is-active")?.dataset.directoryPath;
+    if (path) setActiveDirectoryPath(path);
   });
   controls.append(folderToggle, focusButton);
   panel.append(tree);
@@ -1337,7 +1691,7 @@ async function openDirectoryEntry(
   hash?: string,
 ): Promise<void> {
   try {
-    const file = await readDirectoryFile(path);
+    const file = await readDirectoryFile(path, viewer);
     if (kind === "markdown" && file.kind === "markdown") {
       renderDirectoryMarkdown(file, viewer, hash);
     } else if (kind === "image" && file.kind === "image") {
@@ -1357,7 +1711,13 @@ async function openDirectoryEntry(
   }
 }
 
-async function readDirectoryFile(path: string): Promise<DirectoryFileContent> {
+async function readDirectoryFile(path: string, viewer: ViewerElements): Promise<DirectoryFileContent> {
+  if (viewer.directoryFiles) {
+    const file = viewer.directoryFiles.get(path);
+    if (!file) throw new Error("目录中不存在此文件");
+    return readDirectoryFileContent(file, path);
+  }
+  if (viewer.directoryHandle) return readDirectoryHandleFile(viewer.directoryHandle, path);
   const response: unknown = await chrome.runtime.sendMessage({ type: "READ_DIRECTORY_FILE", path });
   if (!isRecord(response) || response.ok !== true || !isRecord(response.file)) {
     throw new Error(isRecord(response) && typeof response.error === "string" ? response.error : "无法读取文件");
@@ -1374,10 +1734,11 @@ async function readDirectoryFile(path: string): Promise<DirectoryFileContent> {
 
 function renderDirectoryMarkdown(file: Extract<DirectoryFileContent, { kind: "markdown" }>, viewer: ViewerElements, hash?: string): void {
   const { article, customCss } = createArticle(file.text);
-  createTableOfContents(article);
+  viewer.setSidebar("outline", createTableOfContents(article));
   const renderId = ++directoryRenderSequence;
   prepareDirectoryDocument(article, file.path, viewer, renderId);
   viewer.content.replaceChildren(article);
+  viewer.setContentCount(file.text);
   viewer.setPath(file.path);
   replaceCustomStyle(customCss);
   document.title = article.querySelector("h1")?.textContent?.trim() || file.path.split("/").at(-1) || "Markdown";
@@ -1393,6 +1754,7 @@ function renderDirectoryMarkdown(file: Extract<DirectoryFileContent, { kind: "ma
 
 function renderDirectoryImage(file: Extract<DirectoryFileContent, { kind: "image" }>, viewer: ViewerElements): void {
   directoryRenderSequence += 1;
+  viewer.setSidebar("outline", undefined);
   const article = document.createElement("article");
   article.id = "write";
   article.className = "linguamark-directory-image-preview";
@@ -1406,6 +1768,7 @@ function renderDirectoryImage(file: Extract<DirectoryFileContent, { kind: "image
   figure.append(image, caption);
   article.append(figure);
   viewer.content.replaceChildren(article);
+  viewer.setContentCount("");
   viewer.setPath(file.path);
   replaceCustomStyle("");
   document.title = image.alt;
@@ -1425,7 +1788,7 @@ function prepareDirectoryDocument(article: HTMLElement, currentPath: string, vie
       continue;
     }
     image.classList.add("linguamark-directory-image-loading");
-    void loadDirectoryImage(image, resolved.path, article, renderId);
+    void loadDirectoryImage(image, resolved.path, article, viewer, renderId);
   }
 
   for (const anchor of article.querySelectorAll<HTMLAnchorElement>("a[href]")) {
@@ -1447,11 +1810,17 @@ function prepareDirectoryDocument(article: HTMLElement, currentPath: string, vie
   }
 }
 
-async function loadDirectoryImage(image: HTMLImageElement, path: string, article: HTMLElement, renderId: number): Promise<void> {
+async function loadDirectoryImage(
+  image: HTMLImageElement,
+  path: string,
+  article: HTMLElement,
+  viewer: ViewerElements,
+  renderId: number,
+): Promise<void> {
   try {
     let dataUrl = directoryImageCache.get(path);
     if (!dataUrl) {
-      const file = await readDirectoryFile(path);
+      const file = await readDirectoryFile(path, viewer);
       if (file.kind !== "image") throw new Error("相对资源不是图片");
       dataUrl = file.dataUrl;
       directoryImageCache.set(path, dataUrl);
@@ -1506,20 +1875,26 @@ function currentDirectoryPath(viewer: ViewerElements, sidebar: HTMLElement): str
 }
 
 function setActiveDirectoryPath(path: string): void {
-  let hasActiveFile = false;
+  let activeFile: HTMLButtonElement | undefined;
   for (const button of document.querySelectorAll<HTMLButtonElement>(".linguamark-directory-file[data-directory-path]")) {
     const isActive = button.dataset.directoryPath === path;
     button.classList.toggle("is-active", isActive);
     if (isActive) {
       button.setAttribute("aria-current", "page");
-      hasActiveFile = true;
+      activeFile = button;
     } else {
       button.removeAttribute("aria-current");
     }
   }
   for (const button of document.querySelectorAll<HTMLButtonElement>(".linguamark-directory-focus-button")) {
-    button.disabled = !hasActiveFile;
+    button.disabled = !activeFile;
   }
+  if (!activeFile) return;
+  for (let folder = activeFile.closest("details"); folder; folder = folder.parentElement?.closest("details") ?? null) {
+    folder.open = true;
+  }
+  activeFile.scrollIntoView({ block: "center", inline: "nearest" });
+  activeFile.focus({ preventScroll: true });
 }
 
 function resetLocationHash(): void {

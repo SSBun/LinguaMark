@@ -1,5 +1,25 @@
 # 任务索引
 
+- [提交并推送全部本地改动](tasks/commit-and-push-local-changes.md) — In Progress (2026-09-03 19:28)
+
+- [为阅读器增加内容字符统计 HUD](tasks/add-reader-character-count-hud.md) — Completed (2026-09-03 16:18)
+
+- [复用已打开文件的 Chrome 标签页](tasks/reuse-open-file-tab.md) — Completed (2026-09-03 10:06)
+
+- [修复 Mermaid 图表渲染不完整](tasks/fix-incomplete-mermaid-rendering.md) — Completed (2026-09-03 10:19)
+
+- [在文件树与文章目录之间切换](tasks/toggle-file-tree-article-outline.md) — Completed (2026-09-02 15:33)
+
+- [修复文件和目录选择器打开延迟](tasks/fix-picker-opening-delay.md) — Completed (2026-09-03 10:01)
+
+- [自动定位目录中的当前文件](tasks/auto-focus-opened-file-in-toc.md) — Completed (2026-09-02 11:07)
+
+- [悬浮窗点击后展示胶囊菜单](tasks/show-capsule-menu-from-floating-widget.md) — Completed (2026-09-02 10:52)
+
+- [增加重载滚动动画开关](tasks/toggle-reload-scroll-animation.md) — Completed (2026-09-01 20:38)
+
+- [更新 README：特性、安装、使用与徽章](tasks/update-readme-features-install-usage-badges.md) — Completed (2026-09-01 17:36)
+
 - [提交本地改动并发布 GitHub Release 0.1.0](tasks/publish-github-release-0-1-0.md) — Completed (2026-09-01 17:23)
 
 - [放大 Markdown 收藏列表页面](tasks/enlarge-markdown-collection-list.md) — Completed (2026-09-01 16:42)
@@ -14,7 +34,7 @@
 
 - [为路径树增加上下文菜单](tasks/add-path-tree-context-menu.md) — Completed (2026-09-01 16:08)
 
-- [从收藏与历史列表打开项目](tasks/open-favorite-history-items.md) — Completed (2026-09-01 11:30)
+- [从收藏与历史列表打开项目](tasks/open-favorite-history-items.md) — Completed (2026-09-02 11:47)
 
 - [为 Markdown Viewer 增加阅读宽度切换](tasks/add-markdown-viewer-width-toggle.md) — Completed (2026-08-31 20:19)
 

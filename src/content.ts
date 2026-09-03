@@ -945,7 +945,10 @@ function initializeLearningAssistant(): void {
     </button>
     <button class="linguamark-learning-dismiss" type="button" aria-label="关闭悬浮球">×</button>
     <div id="linguamark-learning-menu" class="linguamark-learning-menu" role="menu" aria-label="LinguaMark 操作" aria-hidden="true" inert>
-      <button class="linguamark-learning-analyze" type="button" role="menuitem">解析当前文章</button>
+      <button class="linguamark-learning-analyze" type="button" role="menuitem">
+        <span class="linguamark-learning-menu-label">解析当前文章</span>
+        <span class="linguamark-learning-menu-icon" aria-hidden="true">析</span>
+      </button>
     </div>
     <section class="linguamark-learning-panel" aria-label="英文学习卡片" hidden>
       <header class="linguamark-learning-header">
@@ -1109,12 +1112,14 @@ function moveLearningAssistant(left: number, top: number): void {
   if (!assistant) return;
   const margin = 8;
   const menuOpen = assistant.menu.classList.contains("is-open");
-  const minLeft = menuOpen
-    ? Math.max(margin, margin + assistant.menu.offsetWidth - assistant.root.offsetWidth)
-    : margin;
-  const minTop = margin + (menuOpen ? assistant.menu.offsetHeight + 8 : 0);
-  assistant.root.style.left = `${Math.min(Math.max(minLeft, left), Math.max(minLeft, innerWidth - assistant.root.offsetWidth - margin))}px`;
-  assistant.root.style.top = `${Math.min(Math.max(minTop, top), Math.max(minTop, innerHeight - assistant.root.offsetHeight - margin))}px`;
+  const menuLeft = menuOpen ? assistant.menu.offsetLeft : 0;
+  const menuTop = menuOpen ? assistant.menu.offsetTop : 0;
+  const contentRight = Math.max(assistant.root.offsetWidth, menuLeft + (menuOpen ? assistant.menu.offsetWidth : 0));
+  const contentBottom = Math.max(assistant.root.offsetHeight, menuTop + (menuOpen ? assistant.menu.offsetHeight : 0));
+  const minLeft = margin - Math.min(0, menuLeft);
+  const minTop = margin - Math.min(0, menuTop);
+  assistant.root.style.left = `${Math.min(Math.max(minLeft, left), Math.max(minLeft, innerWidth - contentRight - margin))}px`;
+  assistant.root.style.top = `${Math.min(Math.max(minTop, top), Math.max(minTop, innerHeight - contentBottom - margin))}px`;
 }
 
 function setLearningMenuOpen(open: boolean): void {
