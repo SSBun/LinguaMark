@@ -9,7 +9,7 @@
 
 - 变更：已审核全部待提交文件及 `main` → `origin/main` 的上游关系；公开远端为 `SSBun/LinguaMark`；本机专用 `.mcp.json` 将移出 Git 跟踪并加入忽略规则。
 - 验证：`npm run check`、`npm run build`、3 个测试脚本语法检查、`git diff --check`、Context／Lessons／Task 校验和高置信度凭据扫描通过。
-- 未解决风险：提交已修订但尚未推送；按当前请求及项目规则未运行测试套件。
+- 未解决风险：应用及配置改动已推送；强制审查状态写入仍待提交和推送。按当前请求及项目规则未运行测试套件。
 
 ---
 

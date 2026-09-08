@@ -1,6 +1,6 @@
 # 任务索引
 
-- [提交并推送全部本地改动](tasks/commit-and-push-local-changes.md) — In Progress (2026-09-03 19:28)
+- [提交并推送全部本地改动](tasks/commit-and-push-local-changes.md) — In Review (2026-09-08 11:25)
 
 - [为阅读器增加内容字符统计 HUD](tasks/add-reader-character-count-hud.md) — Completed (2026-09-03 16:18)
 
